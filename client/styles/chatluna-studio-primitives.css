@@ -60,12 +60,6 @@
   opacity: 1;
 }
 
-/* 空间缩放只变换工作区，body 级滚动条不会随动；动画期间隐藏可避免滑块悬在过渡画面中。 */
-.chatluna-studio-workspace-zooming .chatluna-studio-scrollbar-overlay {
-  opacity: 0 !important;
-  transition: none;
-}
-
 .chatluna-studio-scrollbar-thumb {
   position: absolute;
   top: var(--chatluna-studio-scrollbar-thumb-top);
@@ -105,14 +99,11 @@
   user-select: none;
 }
 
-/* 头像首字母不走排版标度，它是几何量：字号必须跟着圆形直径走。
-   此前 8 处头像各自硬编码，写出了 9/10/10.667/12.667/24/25.333/28/32px
-   八个互不相干的值，而 .chatluna-studio-identity-avatar 自己漏了 font-size，首字母直接
-   继承成 16px。这里统一按直径的 1/3 派生：下限 9px 保证 18~20px 的小头像和
-   表态头像仍能认出字母，上限 32px 防止资料页大头像的字母顶到圆形边缘。 */
-.chatluna-studio-identity-avatar,
-.chatluna-studio-menu-avatar,
-.chatluna-studio-avatar {
+/* 头像首字母不走排版标度，它是几何量：字号必须跟着圆形直径走，因此按直径的 1/3 派生。
+   下限 9px 保证小头像仍能认出字母，上限 32px 防止大头像的字母顶到圆形边缘。
+   派生公式必须写在使用点上：提成自定义属性令牌会让内层的 --chatluna-studio-avatar-size
+   永远解析成声明处的缺省值。 */
+.chatluna-studio-identity-avatar {
   font-size: clamp(9px, calc(var(--chatluna-studio-avatar-size, 38px) / 3), 32px);
 }
 
@@ -271,26 +262,13 @@
   backdrop-filter: none;
 }
 
-/* 右键菜单的 shadow-2xl 依赖宿主工具类，可能被其他插件的全局产物覆盖；
-   这里直接使用 WebQQ 浮层令牌，确保一级菜单和独立 Portal 二级菜单都有稳定阴影。 */
-:is(
-  [data-slot="chatluna-studio-context-menu-content"],
-  [data-slot="chatluna-studio-context-menu-sub-content"]
-) {
-  box-shadow: var(--chatluna-studio-secondary-shadow);
-}
-
 /* 毛玻璃外观（body[data-chatluna-studio-frosted] 由 useFrostedSurfaceFlag 写入）下，
    teleport 到 body 的叶子浮层切换为雾化态：半透明面板色 + 背景模糊。
    本条必须位于上方所有实体态背景规则之后，靠层叠顺序覆盖同特异性的实心背景；
    工作区层已禁用 backdrop-filter（ADR 0060），浮层的模糊才能真正采样到内容。
    Popover/Dialog 可能再嵌套 Select，不能把 backdrop-filter 写在容器上，否则
    容器成为 Backdrop Root，嵌套下拉的模糊会完全失效并退化成半透明中间态。 */
-body[data-chatluna-studio-frosted] :is(
-  .studio-select-content,
-  [data-slot="chatluna-studio-context-menu-content"],
-  [data-slot="chatluna-studio-context-menu-sub-content"]
-) {
+body[data-chatluna-studio-frosted] .studio-select-content {
   border-color: color-mix(in srgb, var(--chatluna-studio-secondary-outline) 64%, transparent);
   /* 92% 面板填充会把已模糊的背景重新盖成近乎实心；72% 才能保留可辨识的雾化纹理。 */
   background: color-mix(in srgb, var(--chatluna-studio-panel) 72%, transparent);

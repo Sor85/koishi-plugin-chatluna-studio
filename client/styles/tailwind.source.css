@@ -15,7 +15,7 @@
 
 /* 宿主控制台没有 .dark 类；dark: 变体跟随本插件 useResolvedColorMode 的
    两个落点（工作区元素的 data-color-mode 与 body 上的镜像属性）。 */
-@custom-variant dark (&:is(.dark *, [data-color-mode="dark"] *, body[data-studio-color-scheme="dark"] *));
+@custom-variant dark (&:is(.dark *, [data-color-mode="dark"] *, body[data-chatluna-studio-color-scheme="dark"] *));
 
 /* shadcn 语义色与 radius 标度映射（shadcn-vue Tailwind v4 标准接线）。
    没有这份映射，Tailwind 不会生成 bg-background、text-muted-foreground、

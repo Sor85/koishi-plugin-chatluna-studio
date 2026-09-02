@@ -1,90 +1,11 @@
-@media (max-width: 1180px) {
-  .chatluna-studio-workspace {
-    grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr);
-  }
+/* 跨区域断点。
 
-  .chatluna-studio-workspace.is-details-open .chatluna-studio-profile {
-    z-index: 4;
-    display: flex;
-    width: 100%;
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: stretch;
-    border-left: 1px solid var(--chatluna-studio-border);
-  }
-
-  .chatluna-studio-workspace.is-details-open .chatluna-studio-chat {
-    visibility: hidden;
-  }
-}
-
+   Koishi 在 ≤768px 把 .main-container 改成 `position: fixed; left: 0; width: 100vw`，
+   于是本页会整块压到活动栏底下。这里按活动栏宽度把页面推回来——它是本插件唯一需要的断点：
+   工作区是单列网格（顶栏 + 内容区两行），列宽不随视口变化。 */
 @media (max-width: 768px) {
   .chatluna-studio-page {
     margin-left: var(--activity-width, 3.5rem);
     width: calc(100% - var(--activity-width, 3.5rem));
   }
-
-  /* 补上 is-details-closed / is-standalone-view 两个高特异度变体，
-     否则基线的多列 grid 定义会压过这里，产生溢出视口的幽灵列。 */
-  .chatluna-studio-workspace,
-  .chatluna-studio-workspace.is-details-closed,
-  .chatluna-studio-workspace.is-standalone-view {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .chatluna-studio-conversations,
-  .chatluna-studio-chat,
-  .chatluna-studio-profile {
-    display: none;
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .chatluna-studio-workspace[data-mobile-view="contacts"] .chatluna-studio-conversations,
-  .chatluna-studio-workspace[data-mobile-view="messages"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="debug"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="model-requests"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="presets"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="profile"] .chatluna-studio-chat {
-    display: flex;
-  }
-
-  .chatluna-studio-workspace[data-mobile-view="profile"] .chatluna-studio-chat {
-    display: grid;
-  }
-
-  .chatluna-studio-workspace.is-details-open[data-mobile-view="messages"] .chatluna-studio-profile {
-    z-index: 4;
-    display: flex;
-    width: 100%;
-    grid-column: 1;
-    grid-row: 2;
-    justify-self: stretch;
-  }
-
-  /* 兜底：1180 断点的 is-details-open 放行规则特异度更高，非消息视图下会让详情栏
-     在两栏网格里长出隐式第三列，这里显式压回去。 */
-  .chatluna-studio-workspace.is-details-open:not([data-mobile-view="messages"]) .chatluna-studio-profile {
-    display: none;
-  }
-
-  .chatluna-studio-workspace[data-mobile-view="messages"] .chatluna-studio-chat {
-    display: grid;
-  }
-
-  .chatluna-studio-workspace[data-mobile-view="debug"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="model-requests"] .chatluna-studio-chat,
-  .chatluna-studio-workspace[data-mobile-view="presets"] .chatluna-studio-chat {
-    display: grid;
-  }
-}
-
-:is(.chatluna-studio-space-thumbnail-workspace, .chatluna-studio-space-thumbnail-live-workspace).is-details-open .chatluna-studio-chat {
-  display: grid;
-  visibility: visible;
-  grid-column: 2;
-  grid-row: 2;
-}
-
-@media (prefers-reduced-motion: reduce) {
 }

@@ -95,7 +95,7 @@ describe('客户端模板契约', () => {
       [...colorScheme.matchAll(/document\.body\.dataset\.(\w+)/g)]
         .map(([, key]) => 'data-' + key.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase())),
     )
-    expect([...written].sort()).toEqual(['data-chatluna-studio-frosted', 'data-studio-color-scheme'])
+    expect([...written].sort()).toEqual(['data-chatluna-studio-color-scheme', 'data-chatluna-studio-frosted'])
 
     const used = new Set([...styles.matchAll(/body(?::not\()?\[(data-[\w-]+)/g)].map(([, name]) => name))
     for (const name of used) {
@@ -117,6 +117,6 @@ describe('客户端模板契约', () => {
     ]) {
       expect(mirror, `浮层令牌镜像缺 ${token}`).toContain(`${token}:`)
     }
-    expect(mirror).toContain('body[data-studio-color-scheme="dark"]')
+    expect(mirror).toContain('body[data-chatluna-studio-color-scheme="dark"]')
   })
 })

@@ -28,7 +28,7 @@
 
 /* 暗色令牌挂在与 dark: 变体相同的两个作用域上；teleport 到 body 的面板
    （popover/dialog）由 body 上的属性覆盖，工作区内元素由 data-color-mode 覆盖。 */
-:is([data-color-mode="dark"], body[data-studio-color-scheme="dark"]) {
+:is([data-color-mode="dark"], body[data-chatluna-studio-color-scheme="dark"]) {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -56,17 +56,17 @@
    无 layer 的规则恢复 shadcn 的 radius 标度，保证 1:1 观感。
    浮层容器（popover/dialog/select）自身也直接携带 .rounded-*，
    所以除后代形式外必须同时写自身命中的形式。 */
-:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content, .chatluna-studio-secondary-page) .rounded-sm,
+:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content) .rounded-sm,
 :is(.studio-popover-content, .studio-dialog-content, .studio-select-content).rounded-sm {
   border-radius: calc(var(--radius) - 4px);
 }
 
-:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content, .chatluna-studio-secondary-page) .rounded-md,
+:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content) .rounded-md,
 :is(.studio-popover-content, .studio-dialog-content, .studio-select-content).rounded-md {
   border-radius: calc(var(--radius) - 2px);
 }
 
-:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content, .chatluna-studio-secondary-page) .rounded-lg,
+:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content) .rounded-lg,
 :is(.studio-popover-content, .studio-dialog-content, .studio-select-content).rounded-lg {
   border-radius: var(--radius);
 }
@@ -78,30 +78,8 @@
    无 layer 压过 @layer utilities。这里只重申 Tailwind v4 的合成 box-shadow 声明，
    各 --tw-* 分量的值仍由 @layer utilities 里的真实工具类与 @property 默认值提供，
    不复刻任何具体阴影数值。 */
-:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content, .chatluna-studio-secondary-page) :is(.shadow-2xs, .shadow-xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl),
+:is(.chatluna-studio-workspace, .studio-popover-content, .studio-dialog-content, .studio-select-content) :is(.shadow-2xs, .shadow-xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl),
 :is(.studio-popover-content, .studio-dialog-content, .studio-select-content):is(.shadow-2xs, .shadow-xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl) {
   box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 }
 
-/* 宿主控制台全局样式（@koishijs/client app/index.scss:28-45）给所有
-   table/tr/td,th 加了 text-align:center、width:100%、tr 上下 1px 分隔线和
-   td/th 的 .5em 1em 内边距。这些规则不在任何 cascade layer 内，而 Tailwind
-   preflight 与工具类都在 @layer 内，按级联规则"无 layer 永远压过有 layer"，
-   p-0、size-8 等类在日历表格上全部失效——这是坏样式（横线 + 超大间距）的
-   另一半根因。必须用同样无 layer 的规则在日历范围内归零。 */
-[data-slot="calendar"] tr {
-  border-top: 0;
-  border-bottom: 0;
-}
-
-/* 宿主还有一条 table tr:last-child { border-bottom }（特异度 0,1,2），
-   会压过上面的 0,1,1；thead 唯一行与 tbody 末行都命中 last-child，
-   表现为表头下方和最后一行下方各多一条线，必须单独归零。 */
-[data-slot="calendar"] tr:last-child {
-  border-bottom: 0;
-}
-
-[data-slot="calendar"] td,
-[data-slot="calendar"] th {
-  padding: 0;
-}

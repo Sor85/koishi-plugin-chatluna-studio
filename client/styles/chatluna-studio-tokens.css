@@ -36,7 +36,6 @@
 
 .chatluna-studio-workspace {
   --chatluna-studio-bg: #f8fafc;
-  --chatluna-studio-rail: #f8fafc;
   --chatluna-studio-surface: #f8fafc;
   --chatluna-studio-surface-muted: #f5f7fb;
   --chatluna-studio-border: #dfe5ee;
@@ -52,7 +51,6 @@
 /* data-color-mode 由 useResolvedColorMode 解析后输出，只会是 light/dark，不存在 "auto"。 */
 .chatluna-studio-workspace[data-color-mode="dark"] {
   --chatluna-studio-bg: #2c2c30;
-  --chatluna-studio-rail: #252529;
   --chatluna-studio-surface: #2c2c30;
   --chatluna-studio-surface-muted: #323238;
   --chatluna-studio-border: #45454c;
@@ -87,7 +85,7 @@
 }
 
 /* 浮层的暗色跟随 useResolvedColorMode 写到 body 上的解析结果，与工作区配色保持一致。 */
-body[data-studio-color-scheme="dark"] :is(
+body[data-chatluna-studio-color-scheme="dark"] :is(
   .studio-dialog-content,
   .studio-popover-content,
   .studio-select-content,

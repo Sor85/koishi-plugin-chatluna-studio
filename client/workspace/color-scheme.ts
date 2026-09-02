@@ -13,10 +13,10 @@ export function useResolvedColorMode(appearance: Ref<StudioAppearance>): Ref<'li
     koishiColorMode.value,
   ))
   watchEffect(() => {
-    document.body.dataset.studioColorScheme = resolved.value
+    document.body.dataset.chatlunaStudioColorScheme = resolved.value
   })
   onBeforeUnmount(() => {
-    delete document.body.dataset.studioColorScheme
+    delete document.body.dataset.chatlunaStudioColorScheme
   })
   return resolved
 }

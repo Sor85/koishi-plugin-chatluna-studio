@@ -26,7 +26,7 @@ body:has(.chatluna-studio-layout) > #app > .layout-status {
 }
 
 /* 页面容器在 .chatluna-studio-workspace 之外拿不到 data-color-mode，跟随 body 上的解析配色。 */
-body[data-studio-color-scheme="dark"] .chatluna-studio-page {
+body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   background: rgb(37 37 41);
 }
 

@@ -390,9 +390,7 @@
   max-height: none;
 }
 
-.chatluna-studio-model-request-summary,
 .chatluna-studio-model-request-meta,
-.chatluna-studio-model-request-trace,
 .chatluna-studio-model-request-detail time,
 .chatluna-studio-model-request-item time,
 .chatluna-studio-model-request-timing {
@@ -514,8 +512,7 @@
   border-top: 1px solid var(--chatluna-studio-border);
 }
 
-.chatluna-studio-model-request-meta svg,
-.chatluna-studio-model-request-trace svg {
+.chatluna-studio-model-request-meta svg {
   flex: 0 0 auto;
   margin-top: 1px;
 }
@@ -686,8 +683,7 @@
   background: #fef3c7;
 }
 
-.chatluna-studio-model-request-error,
-.chatluna-studio-model-request-trace {
+.chatluna-studio-model-request-error {
   color: #b91c1c;
 }
 
@@ -710,7 +706,6 @@
 
 .chatluna-studio-model-trajectory {
   --chatluna-studio-trajectory-request: #2f76c9;
-  --chatluna-studio-trajectory-context: #008f75;
   --chatluna-studio-trajectory-layer: color-mix(in srgb, var(--chatluna-studio-surface-muted) 64%, var(--chatluna-studio-surface));
   display: grid;
   min-height: 0;
@@ -728,7 +723,6 @@
 
 .chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-trajectory {
   --chatluna-studio-trajectory-request: #4d8ed3;
-  --chatluna-studio-trajectory-context: #319979;
 }
 
 .chatluna-studio-model-request-detail-nav {
@@ -1020,12 +1014,10 @@
   background: color-mix(in srgb, var(--chatluna-studio-muted) 28%, transparent);
 }
 
-.chatluna-studio-model-trajectory-span.is-search-muted,
 .chatluna-studio-model-trajectory-row.is-search-muted {
   opacity: 0.16;
 }
 
-.chatluna-studio-model-trajectory-span.is-error,
 .chatluna-studio-model-trajectory-request-dot.is-error {
   background: #cf3e45;
 }
@@ -1243,12 +1235,6 @@
 .chatluna-studio-model-trajectory-inspector > header > div,
 .chatluna-studio-model-trajectory-inspector-actions {
   gap: 8px;
-}
-
-.chatluna-studio-model-trajectory-detail-json.chatluna-studio-model-request-json-viewer {
-  min-height: 160px;
-  max-height: 340px;
-  padding: 12px;
 }
 
 .chatluna-studio-model-trajectory-inspector-actions {

@@ -47,10 +47,7 @@ function addListener(
 }
 
 function setVisible(state: StudioScrollbarState, visible: boolean) {
-  // 工作区缩放会从静止指针下方经过并触发 mouseenter/scroll；若此时保留 is-visible，
-  // 全局动画遮罩移除后轨道会在最终位置补闪一次，因此缩放期间必须连可见状态也拒绝写入。
-  const workspaceZooming = document.documentElement.classList.contains('chatluna-studio-workspace-zooming')
-  state.overlay.classList.toggle('is-visible', visible && state.showOverlay && !workspaceZooming)
+  state.overlay.classList.toggle('is-visible', visible && state.showOverlay)
 }
 
 function clearHideTimer(state: StudioScrollbarState) {

@@ -81,6 +81,6 @@ describe('客户端样式加载', () => {
   it('暗色模式由工作区容器上的解析结果驱动，浮层跟随 body 属性', () => {
     const workspace = readFileSync(resolve('client/workspace/workspace.css'), 'utf8')
     expect(workspace).toContain('.chatluna-studio-workspace[data-color-mode="dark"]')
-    expect(workspace).toContain('body[data-studio-color-scheme="dark"]')
+    expect(workspace).toContain('body[data-chatluna-studio-color-scheme="dark"]')
   })
 })
