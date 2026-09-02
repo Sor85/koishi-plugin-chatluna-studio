@@ -167,7 +167,7 @@ function applyScrollbarOptions(
   overlay.style.zIndex = String(binding.value?.zIndex ?? 100)
 }
 
-export const vStudioScrollbar: Directive<HTMLElement, StudioScrollbarOptions | undefined> = {
+export const vChatlunaStudioScrollbar: Directive<HTMLElement, StudioScrollbarOptions | undefined> = {
   mounted(element, binding) {
     if (typeof window === 'undefined' || typeof document === 'undefined' || binding.value?.disabled) return
 

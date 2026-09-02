@@ -90,12 +90,12 @@
               </label>
               <label v-if="category !== 'unattributed'">
                 <span>机器人</span>
-                <Select v-model="botId">
+                <Select v-model="botSelection">
                   <SelectTrigger class="chatluna-studio-model-request-control" aria-label="按机器人筛选">
-                    <SelectValue placeholder="全部机器人" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent :portal-to="filterSelectPortalTarget" class="z-[120]">
-                    <SelectItem value="">全部机器人</SelectItem>
+                    <SelectItem :value="ANY_FILTER_VALUE">全部机器人</SelectItem>
                     <SelectItem v-for="bot in facets.bots" :key="bot.id" :value="bot.id">
                       {{ bot.name || bot.id }}
                     </SelectItem>
@@ -104,12 +104,12 @@
               </label>
               <label v-if="category !== 'unattributed'">
                 <span>会话</span>
-                <Select v-model="conversationId">
+                <Select v-model="conversationSelection">
                   <SelectTrigger class="chatluna-studio-model-request-control" aria-label="按会话筛选">
-                    <SelectValue placeholder="全部会话" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent :portal-to="filterSelectPortalTarget" class="z-[120]">
-                    <SelectItem value="">全部会话</SelectItem>
+                    <SelectItem :value="ANY_FILTER_VALUE">全部会话</SelectItem>
                     <SelectItem
                       v-for="conversation in selectableConversations"
                       :key="conversation.id"
@@ -668,7 +668,7 @@ import {
   type ModelRequestRecordsQuery,
   type ModelRequestTrajectoryQuery,
 } from './query'
-import { vStudioScrollbar } from '#client/shared/scrollbar'
+import { vChatlunaStudioScrollbar } from '#client/shared/scrollbar'
 import type {
   StudioModelRequestDetail,
   StudioModelRequestFacets,
@@ -708,6 +708,23 @@ const emit = defineEmits<{
 const category = ref<ModelRequestCategory>('all')
 const botId = ref('')
 const conversationId = ref('')
+/**
+ * 「不限」项在下拉里必须带一个非空值。
+ *
+ * reka-ui 的 SelectItem 收到空串会直接 throw（空串被它保留给「清空选择、显示 placeholder」），
+ * 而这一步发生在 Popover 内容挂载途中：异常会打断挂载，浮层停在 reka-ui 定位前的
+ * `translate(0, -200%)` 初始位置——面板其实开着，只是整块落在视口上方看不见，表现为点筛选没反应。
+ * 因此下拉层用哨兵值，筛选状态本身仍以空串表示「不限」。
+ */
+const ANY_FILTER_VALUE = '__any__'
+const botSelection = computed({
+  get: () => botId.value || ANY_FILTER_VALUE,
+  set: (value: string) => { botId.value = value === ANY_FILTER_VALUE ? '' : value },
+})
+const conversationSelection = computed({
+  get: () => conversationId.value || ANY_FILTER_VALUE,
+  set: (value: string) => { conversationId.value = value === ANY_FILTER_VALUE ? '' : value },
+})
 const model = ref('')
 const errorsOnly = ref(false)
 const sortOrder = ref<'asc' | 'desc'>('desc')

@@ -62,3 +62,44 @@
   --chatluna-studio-panel: #333338;
   --chatluna-studio-secondary-shadow: 0 18px 42px rgb(9 9 11 / 42%);
 }
+
+/* Dialog / Popover / Select / Tooltip 面板 Portal 到 body，取不到 .chatluna-studio-workspace
+   上的配色令牌，这里镜像一份。少了这一份，引用它们的规则（面板本体的
+   `background: var(--chatluna-studio-bg)`、雾化态的 color-mix、二级轮廓与阴影）会因变量
+   解析失败被整条丢弃——浮层于是完全透明，只剩边框，底下的列表文字直接透出来，不报任何错。
+   --chatluna-studio-accent 由工作区内联传入时优先于此处默认值。 */
+.studio-dialog-content,
+.studio-popover-content,
+.studio-select-content,
+[data-slot="tooltip-content"] {
+  --chatluna-studio-accent: #2563eb;
+  --chatluna-studio-bg: #fff;
+  --chatluna-studio-surface: #f8fafc;
+  --chatluna-studio-surface-muted: #f5f7fb;
+  --chatluna-studio-border: #dfe5ee;
+  --chatluna-studio-text: #202938;
+  --chatluna-studio-muted: #7a8494;
+  --chatluna-studio-hover: #edf2f8;
+  --chatluna-studio-panel: #fff;
+  --chatluna-studio-accent-shadow: color-mix(in srgb, var(--chatluna-studio-accent) 28%, transparent);
+  --chatluna-studio-secondary-outline: color-mix(in srgb, var(--chatluna-studio-border) 72%, transparent);
+  --chatluna-studio-secondary-shadow: 0 18px 42px rgb(15 23 42 / 18%);
+}
+
+/* 浮层的暗色跟随 useResolvedColorMode 写到 body 上的解析结果，与工作区配色保持一致。 */
+body[data-studio-color-scheme="dark"] :is(
+  .studio-dialog-content,
+  .studio-popover-content,
+  .studio-select-content,
+  [data-slot="tooltip-content"]
+) {
+  --chatluna-studio-bg: #2c2c30;
+  --chatluna-studio-surface: #2c2c30;
+  --chatluna-studio-surface-muted: #323238;
+  --chatluna-studio-border: #45454c;
+  --chatluna-studio-text: #edf2f7;
+  --chatluna-studio-muted: #a1a1aa;
+  --chatluna-studio-hover: #39393f;
+  --chatluna-studio-panel: #333338;
+  --chatluna-studio-secondary-shadow: 0 18px 42px rgb(9 9 11 / 42%);
+}

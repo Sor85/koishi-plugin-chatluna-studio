@@ -363,7 +363,7 @@ import {
   toggleFilterMember,
 } from './filter'
 import { studioEvidenceLabels, type StudioEvidenceKind } from '../../src/evidence-kind'
-import { vStudioScrollbar } from '#client/shared/scrollbar'
+import { vChatlunaStudioScrollbar } from '#client/shared/scrollbar'
 import type {
   StudioModelRequestDetail,
   StudioModelRequestPromptKind,

@@ -214,7 +214,7 @@ import {
   type PresetOriginSnapshot,
 } from '#client/shared/evidence-navigation'
 import { createScrollRestore } from '#client/shared/scroll-restore'
-import { vStudioScrollbar } from '#client/shared/scrollbar'
+import { vChatlunaStudioScrollbar } from '#client/shared/scrollbar'
 import type {
   LocateStudioPresetExpressionInput,
   LocateStudioPresetExpressionResult,

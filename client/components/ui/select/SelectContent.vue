@@ -9,7 +9,7 @@ import {
   useForwardPropsEmits,
 } from "reka-ui"
 import { cn } from "#client/lib/utils"
-import { vStudioScrollbar } from "#client/shared/scrollbar"
+import { vChatlunaStudioScrollbar } from "#client/shared/scrollbar"
 import { SelectScrollDownButton, SelectScrollUpButton } from "."
 
 defineOptions({

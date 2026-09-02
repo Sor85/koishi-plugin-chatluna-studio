@@ -24,15 +24,17 @@ export function useResolvedColorMode(appearance: Ref<StudioAppearance>): Ref<'li
 // 毛玻璃开关同样写到 body：teleport 到 body 的 Dialog/Popover/Select/右键菜单
 // 和浮动二级页拿不到工作区 DOM 上的状态类，统一由 body[data-chatluna-studio-frosted]
 // 驱动实体/雾化双态，避免给每个浮层组件都穿一条 frosted prop 链。
+// dataset 键名必须与样式源里的属性选择器逐字对应（tests/client-template-contract.test.ts 断言）：
+// 写成别的名字不会报错，只会让整块雾化规则永不命中，浮层退回没有背景的状态。
 export function useFrostedSurfaceFlag(appearance: Ref<StudioAppearance>): void {
   watchEffect(() => {
     if (appearance.value.enableStudioFrostedGlass) {
-      document.body.dataset.studioFrosted = 'true'
+      document.body.dataset.chatlunaStudioFrosted = 'true'
     } else {
-      delete document.body.dataset.studioFrosted
+      delete document.body.dataset.chatlunaStudioFrosted
     }
   })
   onBeforeUnmount(() => {
-    delete document.body.dataset.studioFrosted
+    delete document.body.dataset.chatlunaStudioFrosted
   })
 }
