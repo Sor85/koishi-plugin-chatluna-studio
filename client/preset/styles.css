@@ -1,0 +1,505 @@
+.chatluna-studio-chat.chatluna-studio-preset-workspace {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 24px;
+  background: var(--chatluna-studio-bg);
+}
+
+.chatluna-studio-preset-header,
+.chatluna-studio-preset-document-header,
+.chatluna-studio-preset-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chatluna-studio-preset-header h1 {
+  margin: 0 0 8px;
+  font-size: var(--chatluna-studio-font-3xl);
+  font-weight: 700;
+}
+
+.chatluna-studio-preset-header p {
+  margin: 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-preset-document-header p {
+  margin: 4px 0 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-header-actions,
+.chatluna-studio-preset-document-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chatluna-studio-preset-error,
+.chatluna-studio-preset-diagnostics {
+  margin: 0;
+  color: var(--chatluna-studio-danger, #b91c1c);
+  background: color-mix(in srgb, var(--chatluna-studio-danger, #dc2626) 8%, transparent);
+}
+
+.chatluna-studio-preset-error {
+  padding: 0;
+}
+
+.chatluna-studio-preset-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-row: 3;
+  gap: 16px;
+  min-height: 0;
+}
+
+.chatluna-studio-preset-list-pane,
+.chatluna-studio-preset-editor-pane {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 16px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-preset-list-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.chatluna-studio-preset-search {
+  z-index: 2;
+  display: flex;
+  min-height: 61px;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  --chatluna-studio-overlay-header-surface: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-preset-search::before {
+  border-radius: 15px 15px 0 0;
+}
+
+.chatluna-studio-preset-search > svg {
+  flex: none;
+  color: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-preset-groups {
+  overflow: auto;
+  margin-top: -61px;
+  padding: 69px 8px 8px;
+  scroll-padding-top: 69px;
+}
+
+.chatluna-studio-preset-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.chatluna-studio-preset-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.chatluna-studio-preset-list-item:hover,
+.chatluna-studio-preset-list-item.is-active {
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 10%, transparent);
+}
+
+.chatluna-studio-preset-list-item.is-active {
+  box-shadow: inset 3px 0 var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-preset-list-item span {
+  display: grid;
+  min-width: 0;
+}
+
+.chatluna-studio-preset-list-item strong,
+.chatluna-studio-preset-list-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 列表项主标题与其他工作台列表统一到 md；small/time 是 xs，靠继承会拉到 16px。 */
+.chatluna-studio-preset-list-item strong {
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-preset-list-item small,
+.chatluna-studio-preset-list-item time {
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-preset-editor-pane {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.chatluna-studio-preset-document-header,
+.chatluna-studio-preset-editor-footer {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+}
+
+/* 标题与诊断组成一个绝对覆盖层；CodeMirror 延伸到其后方并用滚动内边距
+   保持首行原位置，这样 backdrop-filter 才有实际源码内容可采样。 */
+.chatluna-studio-preset-editor-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  overflow: clip;
+  border-radius: 15px 15px 0 0;
+  --chatluna-studio-overlay-header-surface: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-preset-editor-overlay .chatluna-studio-preset-document-header,
+.chatluna-studio-preset-editor-overlay .chatluna-studio-preset-diagnostics {
+  background: transparent;
+}
+
+.chatluna-studio-preset-document-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 编辑器面板标题与聊天顶栏标题同档；其下的说明文案是 sm。 */
+  font-size: var(--chatluna-studio-font-lg);
+}
+
+.chatluna-studio-preset-save-status {
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-save-status[data-status="dirty"],
+.chatluna-studio-preset-save-status[data-status="error"] {
+  color: var(--chatluna-studio-danger, #b91c1c);
+}
+
+.chatluna-studio-preset-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-preset-diagnostics p {
+  margin: 0;
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-source-editor {
+  --chatluna-studio-preset-code-bg: color-mix(in srgb, var(--chatluna-studio-panel) 82%, var(--chatluna-studio-bg));
+  --chatluna-studio-preset-code-gutter: color-mix(in srgb, var(--chatluna-studio-surface-muted) 84%, var(--chatluna-studio-panel));
+  --chatluna-studio-preset-code-key: #1662a8;
+  --chatluna-studio-preset-code-string: #26734d;
+  --chatluna-studio-preset-code-literal: #8b4db2;
+  --chatluna-studio-preset-code-keyword: #a34b1e;
+  --chatluna-studio-preset-code-punctuation: #8a94a3;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--chatluna-studio-preset-code-bg);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-preset-source-editor {
+  --chatluna-studio-preset-code-bg: #24262b;
+  --chatluna-studio-preset-code-gutter: #292c32;
+  --chatluna-studio-preset-code-key: #75b7f0;
+  --chatluna-studio-preset-code-string: #81c995;
+  --chatluna-studio-preset-code-literal: #cf9bea;
+  --chatluna-studio-preset-code-keyword: #efad77;
+  --chatluna-studio-preset-code-punctuation: #858d9b;
+}
+
+.chatluna-studio-preset-source-editor .cm-editor {
+  height: 100%;
+  color: var(--chatluna-studio-text);
+  background: transparent;
+}
+
+.chatluna-studio-preset-source-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
+.chatluna-studio-preset-source-editor .cm-scroller {
+  overflow: auto;
+  padding-top: var(--chatluna-studio-preset-overlay-height, 57px);
+  font-family: var(--chatluna-studio-font-mono);
+  font-variant-ligatures: none;
+  scroll-padding-top: var(--chatluna-studio-preset-overlay-height, 57px);
+  scrollbar-gutter: stable;
+}
+
+.chatluna-studio-preset-source-editor .cm-gutters {
+  color: color-mix(in srgb, var(--chatluna-studio-muted) 78%, transparent);
+  background: var(--chatluna-studio-preset-code-gutter);
+  border-right: 1px solid color-mix(in srgb, var(--chatluna-studio-border) 72%, transparent);
+}
+
+.chatluna-studio-preset-source-editor .cm-gutterElement {
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.chatluna-studio-preset-source-editor .cm-foldGutter .cm-gutterElement {
+  color: color-mix(in srgb, var(--chatluna-studio-muted) 68%, transparent);
+  cursor: pointer;
+}
+
+.chatluna-studio-preset-source-editor .cm-foldGutter .cm-gutterElement:hover {
+  color: var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-preset-source-editor .cm-tooltip {
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  color: var(--chatluna-studio-text);
+  background: var(--chatluna-studio-panel);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 16%);
+}
+
+/* CodeMirror 浮层位于工作区内，可直接采样编辑器内容；仅在统一毛玻璃开关开启时雾化。 */
+body[data-chatluna-studio-frosted] .chatluna-studio-preset-source-editor .cm-tooltip {
+  border-color: color-mix(in srgb, var(--chatluna-studio-secondary-outline) 64%, transparent);
+  background: color-mix(in srgb, var(--chatluna-studio-panel) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.chatluna-studio-preset-source-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  color: var(--chatluna-studio-text);
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 12%, transparent);
+}
+
+.chatluna-studio-preset-source-editor .cm-tooltip .chatluna-studio-preset-expression-tooltip {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  max-width: min(420px, 70vw);
+  padding: 10px 12px;
+}
+
+.chatluna-studio-preset-expression-tooltip-label,
+.chatluna-studio-preset-expression-tooltip time {
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-preset-expression-tooltip-value {
+  overflow: auto;
+  max-height: 180px;
+  margin: 0;
+  color: var(--chatluna-studio-text);
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.chatluna-studio-preset-expression-tooltip-value::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chatluna-studio-preset-expression-tooltip-value::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chatluna-studio-preset-expression-tooltip-value::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.chatluna-studio-preset-expression-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+}
+
+.chatluna-studio-preset-expression-tooltip-action {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.chatluna-studio-preset-expression-tooltip-action .chatluna-studio-preset-expression-tooltip-link {
+  height: 24px;
+  padding-inline: 8px;
+  color: var(--chatluna-studio-accent);
+  background: transparent;
+}
+
+.chatluna-studio-preset-expression-tooltip-action .chatluna-studio-preset-expression-tooltip-link:hover {
+  color: var(--chatluna-studio-accent);
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 10%, transparent);
+}
+
+.chatluna-studio-preset-expression-tooltip.is-error {
+  color: var(--chatluna-studio-danger, #b91c1c);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-token-comment {
+  color: var(--chatluna-studio-muted);
+  font-style: italic;
+}
+
+.chatluna-studio-preset-token-key {
+  color: var(--chatluna-studio-preset-code-key);
+  font-weight: 600;
+}
+
+.chatluna-studio-preset-token-string {
+  color: var(--chatluna-studio-preset-code-string);
+}
+
+.chatluna-studio-preset-token-literal {
+  color: var(--chatluna-studio-preset-code-literal);
+  font-weight: 550;
+}
+
+.chatluna-studio-preset-token-keyword {
+  color: var(--chatluna-studio-preset-code-keyword);
+}
+
+.chatluna-studio-preset-token-punctuation {
+  color: var(--chatluna-studio-preset-code-punctuation);
+}
+
+.chatluna-studio-preset-expression {
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.chatluna-studio-preset-expression.is-control,
+.chatluna-studio-preset-expression.is-control * {
+  color: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-preset-expression.is-control {
+  background: color-mix(in srgb, var(--chatluna-studio-muted) 12%, transparent);
+  text-decoration: underline dotted;
+}
+
+.chatluna-studio-preset-expression.is-value,
+.chatluna-studio-preset-expression.is-value * {
+  color: var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-preset-expression.is-value {
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 12%, transparent);
+  text-decoration: underline;
+}
+
+.chatluna-studio-preset-expression.is-value:hover {
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 20%, transparent);
+}
+
+.chatluna-studio-preset-editor-footer {
+  border-top: 1px solid var(--chatluna-studio-border);
+  border-bottom: 0;
+}
+
+.chatluna-studio-preset-editor-footer p {
+  margin: 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-preset-editor-footer p.is-error {
+  color: var(--chatluna-studio-danger, #b91c1c);
+}
+
+.chatluna-studio-preset-empty {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 32px;
+  color: var(--chatluna-studio-muted);
+  text-align: center;
+}
+
+.chatluna-studio-preset-empty.is-editor {
+  grid-row: 1 / -1;
+}
+
+.chatluna-studio-preset-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chatluna-studio-preset-dialog-fields label,
+label.chatluna-studio-preset-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--chatluna-studio-font-md);
+}
+
+@media (max-width: 960px) {
+  .chatluna-studio-preset-workspace {
+    padding: 16px;
+  }
+
+  .chatluna-studio-preset-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(180px, 36%) minmax(0, 1fr);
+  }
+
+  .chatluna-studio-preset-document-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .chatluna-studio-preset-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .chatluna-studio-preset-document-actions {
+    width: 100%;
+  }
+}

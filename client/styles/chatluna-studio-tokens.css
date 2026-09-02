@@ -1,0 +1,64 @@
+/* 排版标度：client/**.css 与 client/**.vue 里的 font-size 只允许取下面这些令牌。
+   控制台没有给 html/body 设过基准字号，浏览器默认值 16px 会一路继承进工作区，
+   任何漏写 font-size 的节点都会渲染成 16px，和相邻的 11~13px 文本对不上（工具
+   定义行的工具名/描述/属性统计就是这么裂开的）。因此工作区必须显式落一个基准
+   字号（见 client/workspace/workspace.css），而所有层级差异都从这份标度里取值。
+
+   9px 只给时间轴与组成图的微标签用；正文默认是 --chatluna-studio-font-md。
+   头像首字母不属于这份标度，它按 --chatluna-studio-avatar-size 派生（见 chatluna-studio-primitives.css）。
+
+   选择器列表必须与 scripts/studio-style-roots.mjs 的 STUDIO_STYLE_ROOTS 逐项一致
+   （由 tests/studio-style-roots.test.ts 断言）：`.chatluna-studio-page` 是 Koishi
+   k-layout 的主容器，其余全部是 teleport / Portal 到 body 的浮层根，它们不在页面容器的
+   继承树里。漏掉任何一个，那棵子树里的 var(--chatluna-studio-font-*) 会解析失败并静默退回浏览器
+   默认的 16px；同一份清单还决定 Tailwind preflight 的作用域，见 docs/adr/0068。 */
+.chatluna-studio-page,
+.studio-dialog-content,
+[data-slot="dialog-overlay"],
+.studio-popover-content,
+.studio-select-content,
+[data-slot="tooltip-content"] {
+  --chatluna-studio-font-3xs: 9px;
+  --chatluna-studio-font-2xs: 10px;
+  --chatluna-studio-font-xs: 11px;
+  --chatluna-studio-font-sm: 12px;
+  --chatluna-studio-font-md: 13px;
+  --chatluna-studio-font-lg: 14px;
+  --chatluna-studio-font-xl: 16px;
+  --chatluna-studio-font-2xl: 18px;
+  --chatluna-studio-font-3xl: 24px;
+
+  /* 等宽栈此前在 14 处各自硬编码，还分裂成三种不同排列；统一收敛到这里。
+     JetBrains Mono 通常没有安装，实际命中的是 ui-monospace/Menlo，保留首项是为了
+     装了这套字体的环境能用上，末项 monospace 兜底不能删。 */
+  --chatluna-studio-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.chatluna-studio-workspace {
+  --chatluna-studio-bg: #f8fafc;
+  --chatluna-studio-rail: #f8fafc;
+  --chatluna-studio-surface: #f8fafc;
+  --chatluna-studio-surface-muted: #f5f7fb;
+  --chatluna-studio-border: #dfe5ee;
+  --chatluna-studio-text: #202938;
+  --chatluna-studio-muted: #7a8494;
+  --chatluna-studio-hover: #edf2f8;
+  --chatluna-studio-panel: #fff;
+  --chatluna-studio-accent-shadow: color-mix(in srgb, var(--chatluna-studio-accent) 28%, transparent);
+  --chatluna-studio-secondary-outline: color-mix(in srgb, var(--chatluna-studio-border) 72%, transparent);
+  --chatluna-studio-secondary-shadow: 0 18px 42px rgb(15 23 42 / 18%);
+}
+
+/* data-color-mode 由 useResolvedColorMode 解析后输出，只会是 light/dark，不存在 "auto"。 */
+.chatluna-studio-workspace[data-color-mode="dark"] {
+  --chatluna-studio-bg: #2c2c30;
+  --chatluna-studio-rail: #252529;
+  --chatluna-studio-surface: #2c2c30;
+  --chatluna-studio-surface-muted: #323238;
+  --chatluna-studio-border: #45454c;
+  --chatluna-studio-text: #edf2f7;
+  --chatluna-studio-muted: #a1a1aa;
+  --chatluna-studio-hover: #39393f;
+  --chatluna-studio-panel: #333338;
+  --chatluna-studio-secondary-shadow: 0 18px 42px rgb(9 9 11 / 42%);
+}

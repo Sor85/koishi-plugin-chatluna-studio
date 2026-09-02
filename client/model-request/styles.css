@@ -1,0 +1,2457 @@
+.chatluna-studio-chat.chatluna-studio-model-request-workspace {
+  /* 组成图、轨迹台账、分析页卡片、请求页响应分段共用。不要再给分析页单独开色板。 */
+  --chatluna-studio-role-system: #737985;
+  --chatluna-studio-role-user: #2f76c9;
+  --chatluna-studio-role-variable: #a13d76;
+  --chatluna-studio-role-assistant: #a13d76;
+  --chatluna-studio-role-response: #0f766e;
+  --chatluna-studio-role-tool: #c46b00;
+  --chatluna-studio-role-tool-interaction: #8f5aa8;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 24px;
+  background: var(--chatluna-studio-bg);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-chat.chatluna-studio-model-request-workspace {
+  --chatluna-studio-role-system: #a3a8b2;
+  --chatluna-studio-role-user: #6aa9ef;
+  --chatluna-studio-role-variable: #dd79b2;
+  --chatluna-studio-role-assistant: #dd79b2;
+  --chatluna-studio-role-response: #5eead4;
+  --chatluna-studio-role-tool: #bf812f;
+  --chatluna-studio-role-tool-interaction: #a87bb8;
+}
+
+.chatluna-studio-model-request-header,
+.chatluna-studio-model-request-item > header,
+.chatluna-studio-model-request-detail > header,
+.chatluna-studio-model-request-item-title,
+.chatluna-studio-model-request-bot,
+.chatluna-studio-model-request-bot-name,
+.chatluna-studio-model-request-actions,
+.chatluna-studio-model-request-live,
+.chatluna-studio-model-request-error-filter {
+  display: flex;
+  align-items: center;
+}
+
+.chatluna-studio-model-request-header {
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.chatluna-studio-model-request-header h1 {
+  margin: 0 0 8px;
+  font-size: var(--chatluna-studio-font-3xl);
+  font-weight: 700;
+}
+
+.chatluna-studio-model-request-header p,
+.chatluna-studio-model-request-item p,
+.chatluna-studio-model-request-detail p {
+  margin: 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-model-request-actions {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.chatluna-studio-model-request-action-row,
+.chatluna-studio-model-request-item-title,
+.chatluna-studio-model-request-bot,
+.chatluna-studio-model-request-bot-name,
+.chatluna-studio-model-request-live,
+.chatluna-studio-model-request-error-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatluna-studio-model-request-bot {
+  --chatluna-studio-avatar-size: 36px;
+  min-width: 0;
+}
+
+.chatluna-studio-model-request-bot-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chatluna-studio-model-request-bot-copy strong,
+.chatluna-studio-model-request-bot-copy time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-timing,
+.chatluna-studio-model-request-timing > time,
+.chatluna-studio-model-request-timing > span {
+  display: flex;
+  align-items: center;
+}
+
+.chatluna-studio-model-request-timing {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-model-request-timing > time,
+.chatluna-studio-model-request-timing > span {
+  gap: 4px;
+  min-width: 0;
+}
+
+.chatluna-studio-model-request-timing svg {
+  flex: 0 0 auto;
+}
+
+.chatluna-studio-model-request-bot-name {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.chatluna-studio-model-request-bot-name strong {
+  min-width: 0;
+  /* 列表项主标题与侧栏会话名保持同一档；继承 16px 时会比同行的 2xs 时间戳大出一倍。 */
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-model-request-list-toolbar,
+.chatluna-studio-model-request-list-tools,
+.chatluna-studio-model-request-sort {
+  display: flex;
+}
+
+.chatluna-studio-model-request-filter-popover > label:not(.chatluna-studio-model-request-error-filter) {
+  display: grid;
+}
+
+.chatluna-studio-model-request-list-toolbar {
+  z-index: 2;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  background: transparent;
+  --chatluna-studio-overlay-header-surface: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-request-list-toolbar::before {
+  border-radius: 15px 15px 0 0;
+}
+
+.chatluna-studio-model-request-list-toolbar h2 {
+  margin: 0;
+  color: var(--chatluna-studio-text);
+  font-size: var(--chatluna-studio-font-xl);
+  font-weight: 600;
+}
+
+.chatluna-studio-model-request-list-tools {
+  align-items: center;
+  gap: 8px;
+}
+
+.chatluna-studio-model-request-sort {
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  color: var(--chatluna-studio-muted);
+  background: transparent;
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-model-request-filter-trigger {
+  border-radius: 8px;
+}
+
+.chatluna-studio-model-request-filter-trigger.is-filtered {
+  color: var(--chatluna-studio-accent);
+  border-color: color-mix(in srgb, var(--chatluna-studio-accent) 34%, var(--chatluna-studio-border));
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 10%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-request-filter-popover {
+  display: grid;
+  gap: 12px;
+  width: 280px;
+}
+
+.chatluna-studio-model-request-filter-popover > label:not(.chatluna-studio-model-request-error-filter) {
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.chatluna-studio-model-request-control {
+  width: 100%;
+}
+
+.chatluna-studio-model-request-error-filter,
+.chatluna-studio-model-request-live {
+  align-self: end;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-live {
+  gap: 8px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-lg);
+}
+
+.chatluna-studio-model-request-live [data-slot="switch"] {
+  width: 36px;
+  height: 20px;
+  background: #e5e7eb;
+  box-shadow: none;
+}
+
+.chatluna-studio-model-request-live [data-slot="switch"][data-state="checked"] {
+  background: var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-live [data-slot="switch"]:not([data-state="checked"]) {
+  background: #3f3f46;
+}
+
+.chatluna-studio-model-request-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 20px;
+}
+
+.chatluna-studio-model-request-status .chatluna-studio-model-request-error {
+  padding: 0;
+  text-align: left;
+}
+
+.chatluna-studio-model-request-split {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-row: 3;
+  gap: 16px;
+  min-height: 0;
+}
+
+.chatluna-studio-model-request-list-pane,
+.chatluna-studio-model-request-detail-pane {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 16px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-request-list-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.chatluna-studio-model-request-list,
+.chatluna-studio-model-request-detail {
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.chatluna-studio-model-request-list {
+  margin-top: -56px;
+  padding-top: 64px;
+  scroll-padding-top: 64px;
+}
+
+.chatluna-studio-model-request-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.chatluna-studio-model-request-item:hover {
+  background: var(--chatluna-studio-hover);
+}
+
+.chatluna-studio-model-request-item.is-selected,
+.chatluna-studio-model-request-item[aria-current="true"] {
+  background: var(--chatluna-studio-hover);
+}
+
+.chatluna-studio-model-request-item:focus-visible {
+  background: var(--chatluna-studio-hover);
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: 2px;
+}
+
+.chatluna-studio-model-request-item > header,
+.chatluna-studio-model-request-detail > header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.chatluna-studio-model-request-detail {
+  gap: 12px;
+  padding: 16px;
+}
+
+/* 吸顶轨迹必须贴住滚动视口，不能让滚动容器的顶部 padding 变成透出正文的窗口。
+   初始留白交给首个详情头部；头部滚走后，轨迹自然接管 scrollport 顶边。 */
+.chatluna-studio-model-request-detail.has-sticky-trajectory {
+  padding-top: 0;
+}
+
+.chatluna-studio-model-request-detail.has-sticky-trajectory > header:first-child {
+  padding-top: 16px;
+}
+
+/* 轨迹账本自己持有滚动；详情外壳只负责分配高度，禁止再出现第二条最外层滚动条。 */
+.chatluna-studio-model-request-detail.is-trajectory-view {
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view > .chatluna-studio-model-trajectory {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-header {
+  position: absolute;
+  z-index: 4;
+  inset: 0 0 auto;
+  overflow: clip;
+  border-radius: 7px 7px 0 0;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-header::before {
+  z-index: 0;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-ledger {
+  height: 100%;
+  min-height: 0;
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-table {
+  scroll-padding-top: var(--chatluna-studio-model-trajectory-sticky-height, 0px);
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-table::before {
+  display: block;
+  height: var(--chatluna-studio-model-trajectory-sticky-height, 0px);
+  content: "";
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view .chatluna-studio-model-trajectory-inspector {
+  padding-top: calc(12px + var(--chatluna-studio-model-trajectory-sticky-height, 0px));
+}
+
+.chatluna-studio-model-request-detail.is-trajectory-view :is(
+  .chatluna-studio-model-trajectory-table,
+  .chatluna-studio-model-trajectory-inspector
+) {
+  height: 100%;
+  max-height: none;
+}
+
+.chatluna-studio-model-request-summary,
+.chatluna-studio-model-request-meta,
+.chatluna-studio-model-request-trace,
+.chatluna-studio-model-request-detail time,
+.chatluna-studio-model-request-item time,
+.chatluna-studio-model-request-timing {
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-model-request-overview,
+.chatluna-studio-model-request-usage {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 36%, transparent);
+}
+
+.chatluna-studio-model-request-section-heading,
+.chatluna-studio-model-request-section-heading > span {
+  display: flex;
+  align-items: center;
+}
+
+.chatluna-studio-model-request-section-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chatluna-studio-model-request-section-heading > span {
+  gap: 7px;
+  /* 与列表面板标题、分析页 h3 同一档：区块标题统一 xl，别靠继承凑巧落在 16px。 */
+  font-size: var(--chatluna-studio-font-xl);
+}
+
+.chatluna-studio-model-request-section-heading svg,
+.chatluna-studio-model-request-overview-grid article > svg {
+  flex: 0 0 auto;
+  color: var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-model-request-overview-grid,
+.chatluna-studio-model-request-usage-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.chatluna-studio-model-request-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chatluna-studio-model-request-overview-grid article {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 9px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-request-overview-grid article > span,
+.chatluna-studio-model-request-usage-grid article > span {
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-request-overview-grid article > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+  font-size: var(--chatluna-studio-font-md);
+  text-align: right;
+  user-select: text;
+}
+
+.chatluna-studio-model-request-usage-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.chatluna-studio-model-request-usage-grid article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 9px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-request-usage-grid article > strong {
+  overflow: hidden;
+  color: var(--chatluna-studio-text);
+  font-size: var(--chatluna-studio-font-2xl);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-meta-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 52%, transparent);
+}
+
+.chatluna-studio-model-request-meta-list .chatluna-studio-model-request-meta {
+  display: grid;
+  grid-template-columns: 17px minmax(64px, auto) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.chatluna-studio-model-request-meta-list .chatluna-studio-model-request-meta + .chatluna-studio-model-request-meta {
+  border-top: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-request-meta svg,
+.chatluna-studio-model-request-trace svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.chatluna-studio-model-request-meta-label {
+  color: var(--chatluna-studio-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-meta-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+  user-select: text;
+}
+
+.chatluna-studio-model-request-header-value {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.chatluna-studio-model-request-header-toggle {
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-request-header-toggle svg {
+  transition: transform 0.16s ease;
+}
+
+.chatluna-studio-model-request-header-toggle svg.is-expanded {
+  transform: rotate(180deg);
+}
+
+.chatluna-studio-model-request-header-json {
+  min-width: 0;
+}
+
+.chatluna-studio-model-request-header-json .chatluna-studio-model-request-json-viewer {
+  min-height: 0;
+  max-height: 320px;
+  padding: 12px;
+}
+
+.chatluna-studio-model-request-endpoint {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-family: var(--chatluna-studio-font-mono);
+}
+
+.chatluna-studio-model-request-endpoint strong {
+  color: var(--chatluna-studio-accent);
+  font-size: var(--chatluna-studio-font-sm);
+  letter-spacing: 0.03em;
+}
+
+.chatluna-studio-model-request-error-diagnostic {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, #b91c1c 28%, var(--chatluna-studio-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, #fee2e2 46%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-request-error-diagnostic .chatluna-studio-model-request-section-heading a {
+  color: #b91c1c;
+  font-size: var(--chatluna-studio-font-md);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chatluna-studio-model-request-error-details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.chatluna-studio-model-request-error-details dt {
+  align-self: start;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-md);
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.chatluna-studio-model-request-error-details dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--chatluna-studio-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.chatluna-studio-model-request-capture-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.chatluna-studio-workspace .studio-badge.chatluna-studio-model-request-error-code {
+  min-height: 22px;
+  padding: 2px 8px;
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-error-trace {
+  color: var(--chatluna-studio-muted);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-sm);
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-error-causes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--chatluna-studio-text);
+}
+
+.chatluna-studio-model-request-error-note {
+  color: var(--chatluna-studio-muted) !important;
+  font-size: var(--chatluna-studio-font-md);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-error-diagnostic {
+  border-color: color-mix(in srgb, #fca5a5 34%, var(--chatluna-studio-border));
+  background: color-mix(in srgb, #7f1d1d 30%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-error-diagnostic .chatluna-studio-model-request-section-heading a {
+  color: #fca5a5;
+}
+
+/* 必须带 .chatluna-studio-workspace 前缀。工作区默认徽章
+   `.chatluna-studio-workspace [data-slot="badge"][data-variant="default"]`
+   特异度为 (0,3,0)，会把浅色完成态盖成主题蓝；深色选择器原先多一层
+   [data-color-mode="dark"]，所以只有深色看起来是绿的。 */
+.chatluna-studio-workspace .studio-badge.chatluna-studio-model-request-complete,
+.chatluna-studio-workspace .studio-badge.chatluna-studio-model-request-status-success {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .studio-badge.chatluna-studio-model-request-complete,
+.chatluna-studio-workspace[data-color-mode="dark"] .studio-badge.chatluna-studio-model-request-status-success {
+  color: #a7f3d0;
+  background: #064e3b;
+}
+
+.chatluna-studio-workspace .studio-badge.chatluna-studio-model-request-status-pending {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.chatluna-studio-model-request-error,
+.chatluna-studio-model-request-trace {
+  color: #b91c1c;
+}
+
+.chatluna-studio-workspace .studio-badge.chatluna-studio-model-request-status-error {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.studio-badge.chatluna-studio-model-request-source {
+  border-color: var(--chatluna-studio-border);
+  color: var(--chatluna-studio-muted);
+  background: var(--chatluna-studio-surface-muted);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .studio-badge.chatluna-studio-model-request-provider {
+  border-color: #6d28d9;
+  color: #ddd6fe;
+  background: #4c1d95;
+}
+
+.chatluna-studio-model-trajectory {
+  --chatluna-studio-trajectory-request: #2f76c9;
+  --chatluna-studio-trajectory-context: #008f75;
+  --chatluna-studio-trajectory-layer: color-mix(in srgb, var(--chatluna-studio-surface-muted) 64%, var(--chatluna-studio-surface));
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface);
+  container-type: inline-size;
+}
+
+/* 毛玻璃头部需要穿透轨迹根容器，才能采样其后方正在滚动的账本内容。 */
+.chatluna-studio-workspace.is-frosted .chatluna-studio-model-trajectory {
+  background: transparent;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-trajectory {
+  --chatluna-studio-trajectory-request: #4d8ed3;
+  --chatluna-studio-trajectory-context: #319979;
+}
+
+.chatluna-studio-model-request-detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.chatluna-studio-model-request-view-switch,
+.chatluna-studio-model-trajectory-mode {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  padding: 3px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface-muted);
+}
+
+.chatluna-studio-model-trajectory-scope,
+.chatluna-studio-model-trajectory-summary,
+.chatluna-studio-model-trajectory-controls,
+.chatluna-studio-model-trajectory-control-actions,
+.chatluna-studio-model-trajectory-search,
+.chatluna-studio-model-trajectory-inspector > header,
+.chatluna-studio-model-trajectory-inspector > header > div,
+.chatluna-studio-model-trajectory-inspector-actions {
+  display: flex;
+  align-items: center;
+}
+
+.chatluna-studio-model-trajectory-scope,
+.chatluna-studio-model-trajectory-controls,
+.chatluna-studio-model-trajectory-inspector > header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chatluna-studio-model-trajectory-inspector > header {
+  position: relative;
+  min-width: 0;
+  flex-wrap: wrap;
+  padding-right: 40px;
+}
+
+.chatluna-studio-model-trajectory-inspector-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.chatluna-studio-model-trajectory-inspector > header > div {
+  min-width: 0;
+}
+
+.chatluna-studio-model-trajectory-inspector-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.chatluna-studio-model-trajectory-scope {
+  min-height: 40px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-trajectory-summary {
+  gap: 12px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-model-trajectory-controls {
+  min-height: 32px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 44%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-control-actions {
+  gap: 2px;
+}
+
+/* 展开后的过滤开关较多，工具栏必须允许换行，否则窄屏会把搜索框挤出容器。 */
+.chatluna-studio-model-trajectory-controls {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: 4px;
+}
+
+/* 横向折叠：用 0fr → 1fr 插值到真实内容宽，宽屏向右展开。
+   旧实现 max-width: 100% + flex-wrap 会让这一组按整行计宽，按钮在组内换行，
+   看起来像向下长高。 */
+.chatluna-studio-model-trajectory-control-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns 0.18s ease, opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.chatluna-studio-model-trajectory-control-filters.is-collapsed {
+  grid-template-columns: 0fr;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.chatluna-studio-model-trajectory-control-filters-inner {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatluna-studio-model-trajectory-control-filters:not(.is-collapsed) .chatluna-studio-model-trajectory-control-filters-inner {
+  min-width: min-content;
+}
+
+.chatluna-studio-model-trajectory-controls [data-slot="button"] {
+  height: 22px;
+  padding-inline: 6px;
+  border-radius: 4px;
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-model-trajectory-control-query {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.chatluna-studio-model-trajectory-search {
+  position: relative;
+  flex: 0 1 164px;
+  width: min(164px, 32%);
+}
+
+.chatluna-studio-model-trajectory-search > svg {
+  position: absolute;
+  left: 7px;
+  width: 13px;
+  height: 13px;
+  color: var(--chatluna-studio-muted);
+  pointer-events: none;
+}
+
+.chatluna-studio-model-trajectory-search input {
+  height: 22px;
+  padding-left: 25px;
+  border-radius: 4px;
+  background: var(--chatluna-studio-surface);
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-model-trajectory-composition-shell {
+  position: relative;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 64%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-composition-zoom {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 1px;
+}
+
+.chatluna-studio-model-trajectory-composition-zoom [data-slot="button"] {
+  height: 20px;
+  min-width: 20px;
+  padding-inline: 4px;
+}
+
+.chatluna-studio-model-trajectory-composition-zoom .chatluna-studio-model-trajectory-composition-zoom-value {
+  min-width: 40px;
+  font-size: var(--chatluna-studio-font-3xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.chatluna-studio-model-trajectory-composition {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  min-height: 50px;
+  overflow: hidden;
+}
+
+.chatluna-studio-model-trajectory-composition-labels,
+.chatluna-studio-model-trajectory-composition-tracks {
+  display: grid;
+  grid-auto-rows: 14px;
+  align-content: center;
+}
+
+.chatluna-studio-model-trajectory-composition-labels {
+  padding-right: 6px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-3xs);
+  text-align: right;
+}
+
+.chatluna-studio-model-trajectory-composition-labels span {
+  line-height: 14px;
+}
+
+.chatluna-studio-model-trajectory-composition-viewport {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.chatluna-studio-model-trajectory-composition-tracks {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 100%;
+  height: 100%;
+  padding-right: 6px;
+  border-left: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-trajectory-composition-track {
+  position: relative;
+  min-width: 0;
+}
+
+.chatluna-studio-model-trajectory-composition-bar {
+  position: absolute;
+  top: 3px;
+  min-width: 2px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+  background: var(--chatluna-studio-role-system);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-user {
+  background: var(--chatluna-studio-role-user);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-variable {
+  background: var(--chatluna-studio-role-variable);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-assistant {
+  background: var(--chatluna-studio-role-assistant);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-tool-definition {
+  background: var(--chatluna-studio-role-tool);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-tool-interaction {
+  background: var(--chatluna-studio-role-tool-interaction);
+}
+
+.chatluna-studio-model-trajectory-composition-bar.is-selected {
+  z-index: 1;
+  box-shadow:
+    0 0 0 1px var(--chatluna-studio-trajectory-layer),
+    0 0 0 2px var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-model-trajectory-composition-empty {
+  min-height: 50px;
+  padding: 18px 12px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+  text-align: center;
+}
+
+.chatluna-studio-model-trajectory-boundary {
+  position: absolute;
+  inset-block: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--chatluna-studio-muted) 28%, transparent);
+}
+
+.chatluna-studio-model-trajectory-span.is-search-muted,
+.chatluna-studio-model-trajectory-row.is-search-muted {
+  opacity: 0.16;
+}
+
+.chatluna-studio-model-trajectory-span.is-error,
+.chatluna-studio-model-trajectory-request-dot.is-error {
+  background: #cf3e45;
+}
+
+.chatluna-studio-model-trajectory-timing-note {
+  margin: 0;
+  padding: 5px 8px 5px 56px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-2xs);
+}
+
+.chatluna-studio-model-trajectory-filter-empty {
+  padding: 32px 16px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+  text-align: center;
+}
+
+.chatluna-studio-model-trajectory-ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 360px;
+  overflow: hidden;
+}
+
+.chatluna-studio-model-trajectory-ledger.has-inspector {
+  grid-template-columns: minmax(0, 1fr) minmax(480px, 42%);
+}
+
+.chatluna-studio-model-trajectory-table,
+.chatluna-studio-model-trajectory-inspector {
+  min-width: 0;
+  min-height: 0;
+  max-height: 560px;
+  overflow: auto;
+}
+
+.chatluna-studio-model-trajectory-request-boundary {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0 10px 0 7px;
+  border: 0;
+  border-top: 2px solid var(--chatluna-studio-border);
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-muted);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 62%, var(--chatluna-studio-surface));
+  font: inherit;
+  font-size: var(--chatluna-studio-font-2xs);
+  text-align: left;
+}
+
+.chatluna-studio-model-trajectory-request-boundary:first-child {
+  border-top: 0;
+}
+
+.chatluna-studio-model-trajectory-request-boundary:hover {
+  background: var(--chatluna-studio-hover);
+}
+
+.chatluna-studio-model-trajectory-request-boundary:focus-visible {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
+}
+
+.chatluna-studio-model-trajectory-request-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 650;
+}
+
+.chatluna-studio-model-trajectory-request-chevron {
+  flex: 0 0 auto;
+  transition: transform 0.18s ease;
+}
+
+.chatluna-studio-model-trajectory-request-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.chatluna-studio-model-trajectory-request-boundary > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-trajectory-request-boundary time {
+  font-variant-numeric: tabular-nums;
+}
+
+.chatluna-studio-model-trajectory-request-dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--chatluna-studio-trajectory-request);
+}
+
+.chatluna-studio-model-trajectory-request-dot.is-pending {
+  background: #c98619;
+}
+
+.chatluna-studio-model-trajectory-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 122px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-text);
+  background: transparent;
+  font-size: var(--chatluna-studio-font-sm);
+  text-align: left;
+}
+
+.chatluna-studio-model-trajectory-row:hover,
+.chatluna-studio-model-trajectory-row.is-selected {
+  background: var(--chatluna-studio-hover);
+}
+
+.chatluna-studio-model-trajectory-row.is-selected::before {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--chatluna-studio-accent);
+  content: "";
+}
+
+.chatluna-studio-model-trajectory-row:focus-visible {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
+}
+
+.chatluna-studio-model-trajectory-kind {
+  width: max-content;
+  min-width: 54px;
+  height: 19px;
+  padding: 3px 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--chatluna-studio-muted);
+  background: var(--chatluna-studio-surface-muted);
+  font-size: var(--chatluna-studio-font-2xs);
+  font-weight: 650;
+  line-height: 13px;
+  text-align: center;
+}
+
+.chatluna-studio-model-trajectory-row.is-system .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-system);
+  background: color-mix(in srgb, var(--chatluna-studio-role-system) 12%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-user .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-user);
+  background: color-mix(in srgb, var(--chatluna-studio-role-user) 12%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-assistant .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-assistant);
+  background: color-mix(in srgb, var(--chatluna-studio-role-assistant) 12%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-response .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-response);
+  background: color-mix(in srgb, var(--chatluna-studio-role-response) 12%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-tool-call .chatluna-studio-model-trajectory-kind,
+.chatluna-studio-model-trajectory-row.is-tool-result .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-tool-interaction);
+  background: color-mix(in srgb, var(--chatluna-studio-role-tool-interaction) 13%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-tool-definition .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-tool);
+  background: color-mix(in srgb, var(--chatluna-studio-role-tool) 13%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-row.is-variable .chatluna-studio-model-trajectory-kind {
+  color: var(--chatluna-studio-role-variable);
+  background: color-mix(in srgb, var(--chatluna-studio-role-variable) 12%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-trajectory-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-trajectory-inspector {
+  container-type: inline-size;
+  container-name: chatluna-studio-trajectory-inspector;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  overflow: hidden;
+  padding: 12px;
+  border-left: 1px solid var(--chatluna-studio-border);
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-trajectory-inspector > header > div,
+.chatluna-studio-model-trajectory-inspector-actions {
+  gap: 8px;
+}
+
+.chatluna-studio-model-trajectory-detail-json.chatluna-studio-model-request-json-viewer {
+  min-height: 160px;
+  max-height: 340px;
+  padding: 12px;
+}
+
+.chatluna-studio-model-trajectory-inspector-actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.chatluna-studio-model-trajectory-inspector-body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chatluna-studio-model-trajectory [data-slot="tooltip-content"] {
+  display: grid;
+  gap: 2px;
+  max-width: 280px;
+}
+
+.chatluna-studio-model-trajectory [data-slot="tooltip-content"] span {
+  color: color-mix(in srgb, currentColor 78%, transparent);
+  font-size: var(--chatluna-studio-font-2xs);
+}
+
+@container (max-width: 620px) {
+  .chatluna-studio-model-trajectory-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .chatluna-studio-model-trajectory-kind {
+    min-width: 54px;
+  }
+}
+
+.chatluna-studio-model-request-more {
+  width: 100%;
+}
+
+.chatluna-studio-model-request-body {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+}
+
+.chatluna-studio-model-request-analysis.chatluna-studio-model-trajectory {
+  min-height: 420px;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.chatluna-studio-model-request-analysis .chatluna-studio-model-trajectory-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  overflow: clip;
+  border-radius: 7px 7px 0 0;
+}
+
+/* 轨迹头部沿用覆盖式表头的共享背景层，只补充自身的分隔线。 */
+.chatluna-studio-model-trajectory-header::before {
+  border-bottom: 1px solid color-mix(in srgb, var(--chatluna-studio-border) 72%, transparent);
+}
+
+.chatluna-studio-workspace.is-frosted .chatluna-studio-model-trajectory-header :is(
+  .chatluna-studio-model-trajectory-scope,
+  .chatluna-studio-model-trajectory-controls,
+  .chatluna-studio-model-trajectory-composition-shell,
+  .chatluna-studio-model-trajectory-composition-empty
+) {
+  background: transparent;
+}
+
+.chatluna-studio-model-request-analysis .chatluna-studio-model-analysis-main {
+  overflow: visible;
+}
+
+.chatluna-studio-model-request-analysis .chatluna-studio-model-analysis-content {
+  max-height: none;
+  overflow: visible;
+}
+
+.chatluna-studio-model-request-analysis .chatluna-studio-model-analysis-nav {
+  position: sticky;
+  top: var(--chatluna-studio-model-trajectory-sticky-height, 0px);
+  align-self: start;
+  max-height: calc(var(--chatluna-studio-model-analysis-nav-height, 100vh) - var(--chatluna-studio-model-trajectory-sticky-height, 0px));
+  overflow: auto;
+  padding-bottom: 44px;
+}
+
+.chatluna-studio-model-request-body-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.chatluna-studio-model-request-body-tabs,
+.chatluna-studio-model-request-response-tabs,
+.chatluna-studio-model-request-body-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chatluna-studio-model-request-body-tabs,
+.chatluna-studio-model-request-response-tabs {
+  padding: 3px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface-muted);
+}
+
+.chatluna-studio-model-request-body-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chatluna-studio-model-request-response-meta {
+  margin: 0;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-response-preview {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 320px;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 52%, transparent);
+}
+
+.chatluna-studio-model-response-section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--chatluna-studio-panel);
+}
+
+.chatluna-studio-model-response-section.is-content,
+.chatluna-studio-model-response-section.is-reasoning {
+  border-left-color: var(--chatluna-studio-role-response);
+}
+
+.chatluna-studio-model-response-section.is-tools {
+  border-left-color: var(--chatluna-studio-role-tool-interaction);
+}
+
+.chatluna-studio-model-response-section > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-text);
+  background: var(--chatluna-studio-surface-muted);
+}
+
+.chatluna-studio-model-response-section > pre,
+.chatluna-studio-model-response-tool pre {
+  margin: 0;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+  font-family: inherit;
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.chatluna-studio-model-response-tool-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.chatluna-studio-model-response-tool {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-response-tool > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-response-tool small {
+  overflow: hidden;
+  color: var(--chatluna-studio-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-response-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-request-response-raw {
+  min-width: 0;
+  min-height: 320px;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  color: var(--chatluna-studio-text);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 52%, transparent);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.chatluna-studio-model-request-json-viewer {
+  min-width: 0;
+  min-height: 320px;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 52%, transparent);
+  contain: inline-size;
+  user-select: text;
+}
+
+.chatluna-studio-model-request-json-node {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--chatluna-studio-text);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.6;
+}
+
+.chatluna-studio-model-request-json-row {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 24px 2px 2px;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  user-select: text;
+}
+
+.chatluna-studio-model-request-json-row:hover {
+  background: color-mix(in srgb, var(--chatluna-studio-hover) 56%, transparent);
+}
+
+.chatluna-studio-model-request-json-node.is-highlighted > .chatluna-studio-model-request-json-row,
+.chatluna-studio-model-request-json-node.is-highlighted > .chatluna-studio-model-request-json-image-node {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 15%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-request-json-toggle {
+  display: inline-flex;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  color: var(--chatluna-studio-muted);
+  background: transparent;
+  user-select: none;
+}
+
+.chatluna-studio-model-request-json-toggle:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: 1px;
+}
+
+.chatluna-studio-model-request-json-string-toggle {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  opacity: 0.45;
+}
+
+.chatluna-studio-model-request-json-row:hover .chatluna-studio-model-request-json-string-toggle,
+.chatluna-studio-model-request-json-string-toggle:focus-visible {
+  opacity: 1;
+}
+
+.chatluna-studio-model-request-json-children {
+  min-width: 0;
+  margin-left: 7px;
+  padding-left: 8px;
+  border-left: 1px solid var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-request-json-closing {
+  display: block;
+  padding: 2px 0 2px 17px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-request-json-key {
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.chatluna-studio-model-request-json-sep,
+.chatluna-studio-model-request-json-preview,
+.chatluna-studio-model-request-json-bracket {
+  flex: 0 0 auto;
+  color: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-model-request-json-preview {
+  margin-left: 4px;
+  font-size: var(--chatluna-studio-font-sm);
+}
+
+.chatluna-studio-model-request-json-value,
+.chatluna-studio-model-request-json-string {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chatluna-studio-model-request-json-string {
+  display: block;
+  flex: 1 1 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  color: #059669;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-request-json-string.is-expanded {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.chatluna-studio-model-request-json-string-expanded {
+  display: block;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
+}
+
+.chatluna-studio-model-request-json-image-node {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 2px 8px;
+}
+
+.chatluna-studio-model-request-json-image-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  min-height: 24px;
+}
+
+.chatluna-studio-model-request-json-image-summary {
+  color: var(--chatluna-studio-muted);
+  font-style: italic;
+}
+
+.chatluna-studio-model-request-json-image-preview {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  max-width: min(100%, 520px);
+  margin: 0 0 0 17px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface);
+}
+
+.chatluna-studio-model-request-json-image {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.chatluna-studio-model-request-json-image-mode {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  color: var(--chatluna-studio-muted);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--chatluna-studio-font-sm);
+  line-height: 18px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chatluna-studio-model-request-json-image-mode:hover,
+.chatluna-studio-model-request-json-image-mode:focus-visible {
+  color: var(--chatluna-studio-accent);
+}
+
+.chatluna-studio-model-request-json-node[data-value-kind="number"] .chatluna-studio-model-request-json-value {
+  color: #d97706;
+}
+
+.chatluna-studio-model-request-json-node[data-value-kind="boolean"] .chatluna-studio-model-request-json-value {
+  color: #2563eb;
+}
+
+.chatluna-studio-model-request-json-node[data-value-kind="null"] .chatluna-studio-model-request-json-value {
+  color: #e11d48;
+}
+
+.chatluna-studio-model-request-json-node[data-value-kind="undefined"] .chatluna-studio-model-request-json-value,
+.chatluna-studio-model-request-json-node[data-value-kind="other"] .chatluna-studio-model-request-json-value {
+  color: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-json-key,
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-json-node[data-value-kind="boolean"] .chatluna-studio-model-request-json-value {
+  color: #60a5fa;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-json-string {
+  color: #34d399;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-json-node[data-value-kind="number"] .chatluna-studio-model-request-json-value {
+  color: #fbbf24;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-json-node[data-value-kind="null"] .chatluna-studio-model-request-json-value {
+  color: #fb7185;
+}
+
+.chatluna-studio-model-request-empty,
+.chatluna-studio-model-request-error {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 32px;
+  text-align: center;
+}
+
+.chatluna-studio-model-analysis {
+  min-width: 0;
+}
+
+.chatluna-studio-model-analysis-main {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 420px;
+  overflow: hidden;
+}
+
+.chatluna-studio-model-analysis-nav {
+  min-width: 0;
+  max-height: 720px;
+  overflow: auto;
+  border-right: 1px solid var(--chatluna-studio-border);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 52%, var(--chatluna-studio-surface));
+}
+
+.chatluna-studio-model-analysis-boundary {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-text);
+  background: color-mix(in srgb, var(--chatluna-studio-surface-muted) 72%, var(--chatluna-studio-surface));
+  font: inherit;
+  text-align: left;
+}
+
+.chatluna-studio-model-analysis-boundary-title,
+.chatluna-studio-model-analysis-boundary-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.chatluna-studio-model-analysis-boundary-title {
+  gap: 7px;
+  /* 边界条是导航栏里的分隔行，配套的 meta/small 都是 2xs；标题不写字号会继承
+     成 16px，在 10px 元信息旁边像误插进来的正文。 */
+  font-size: var(--chatluna-studio-font-xs);
+}
+
+.chatluna-studio-model-analysis-boundary-title small {
+  margin-left: auto;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-2xs);
+}
+
+.chatluna-studio-model-analysis-boundary-meta {
+  overflow: hidden;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-analysis-boundary-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.chatluna-studio-model-analysis-boundary.is-pending .chatluna-studio-model-analysis-boundary-dot { background: #c98619; }
+.chatluna-studio-model-analysis-boundary.is-error .chatluna-studio-model-analysis-boundary-dot { background: #cf3e45; }
+
+.chatluna-studio-model-analysis-nav-group {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+  color: var(--chatluna-studio-text);
+  background: transparent;
+  text-align: left;
+}
+
+.chatluna-studio-model-analysis-nav-heading,
+.chatluna-studio-model-analysis-nav-item,
+.chatluna-studio-model-analysis-heading,
+.chatluna-studio-model-analysis-card > header,
+.chatluna-studio-model-analysis-tool-summary,
+.chatluna-studio-model-analysis-tool-call > div,
+.chatluna-studio-model-analysis-response-meta {
+  display: flex;
+  align-items: center;
+}
+
+.chatluna-studio-model-analysis-nav-group { --chatluna-studio-role: var(--chatluna-studio-role-system); }
+.chatluna-studio-model-analysis-nav-group.is-user { --chatluna-studio-role: var(--chatluna-studio-role-user); }
+.chatluna-studio-model-analysis-nav-group.is-assistant { --chatluna-studio-role: var(--chatluna-studio-role-assistant); }
+.chatluna-studio-model-analysis-nav-group.is-response { --chatluna-studio-role: var(--chatluna-studio-role-response); }
+.chatluna-studio-model-analysis-nav-group.is-tool { --chatluna-studio-role: var(--chatluna-studio-role-tool); }
+.chatluna-studio-model-analysis-nav-group.is-variable { --chatluna-studio-role: var(--chatluna-studio-role-variable); }
+.chatluna-studio-model-analysis-nav-heading {
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  /* font: inherit 会把字号一起拉回继承值；导航项是 xs，分组标题只比它大一档，
+     不显式写就会继承成 16px，把整条导航栏的层级压垮。 */
+  font-size: var(--chatluna-studio-font-sm);
+  text-align: left;
+}
+.chatluna-studio-model-analysis-nav-heading:hover,
+.chatluna-studio-model-analysis-nav-heading:focus-visible { background: var(--chatluna-studio-hover); }
+.chatluna-studio-model-analysis-nav-heading svg { flex: 0 0 auto; color: var(--chatluna-studio-role); }
+.chatluna-studio-model-analysis-nav-heading small { margin-left: auto; color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-nav-heading .chatluna-studio-model-analysis-nav-chevron {
+  color: var(--chatluna-studio-muted);
+  transition: transform 0.16s ease;
+}
+.chatluna-studio-model-analysis-nav-group.is-active .chatluna-studio-model-analysis-nav-chevron { transform: rotate(180deg); }
+.chatluna-studio-model-analysis-nav-items { display: grid; gap: 2px; }
+.chatluna-studio-model-analysis-nav-item {
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 4px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--chatluna-studio-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--chatluna-studio-font-xs);
+  text-align: left;
+}
+.chatluna-studio-model-analysis-nav-item:hover,
+.chatluna-studio-model-analysis-nav-item:focus-visible,
+.chatluna-studio-model-analysis-nav-item.is-current {
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 12%, var(--chatluna-studio-surface));
+}
+.chatluna-studio-model-analysis-nav-item.is-current {
+  box-shadow: inset 3px 0 0 var(--chatluna-studio-accent);
+}
+.chatluna-studio-model-analysis-nav-index { flex: 0 0 auto; color: var(--chatluna-studio-muted); font-variant-numeric: tabular-nums; }
+.chatluna-studio-model-analysis-nav-preview { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chatluna-studio-model-analysis-nav-kind {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: var(--chatluna-studio-role);
+  background: color-mix(in srgb, var(--chatluna-studio-role) 12%, var(--chatluna-studio-surface));
+  font-weight: 650;
+}
+.chatluna-studio-model-analysis-nav-kind.is-tool-call,
+.chatluna-studio-model-analysis-nav-kind.is-tool-result { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }
+.chatluna-studio-model-analysis-nav-kind.is-tool-definition { --chatluna-studio-role: var(--chatluna-studio-role-tool); }
+.chatluna-studio-model-analysis-nav-kind.is-variable { --chatluna-studio-role: var(--chatluna-studio-role-variable); }
+.chatluna-studio-model-analysis-nav-kind.is-response { --chatluna-studio-role: var(--chatluna-studio-role-response); }
+.chatluna-studio-model-analysis-nav-group.is-muted,
+.chatluna-studio-model-analysis-nav-item.is-muted,
+.chatluna-studio-model-analysis-card.is-muted,
+.chatluna-studio-model-analysis-variable-card.is-muted { opacity: 0.2; }
+
+.chatluna-studio-model-analysis-content,
+.chatluna-studio-model-analysis-conversation { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.chatluna-studio-model-analysis-content { max-height: 720px; overflow: auto; padding: 14px; }
+.chatluna-studio-model-analysis.is-inspector,
+.chatluna-studio-model-analysis.is-inspector .chatluna-studio-model-analysis-main {
+  min-height: 0;
+}
+.chatluna-studio-model-analysis.is-inspector .chatluna-studio-model-analysis-main {
+  display: block;
+  overflow: visible;
+}
+.chatluna-studio-model-analysis.is-inspector .chatluna-studio-model-analysis-content {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.chatluna-studio-model-trajectory-inspector-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chatluna-studio-model-analysis-formatted { min-width: 0; }
+.chatluna-studio-model-analysis-heading { justify-content: space-between; gap: 12px; }
+.chatluna-studio-model-analysis-heading h3,
+.chatluna-studio-model-analysis-variables h3,
+.chatluna-studio-model-analysis-tools h3 { margin: 0; color: var(--chatluna-studio-text); font-size: var(--chatluna-studio-font-xl); }
+/* 计数括号是标题的附属信息，必须比标题小一档；只改 font-weight 会让它跟着 h3 停在 xl。 */
+.chatluna-studio-model-analysis-heading h3 span,
+.chatluna-studio-model-analysis-variables h3 span,
+.chatluna-studio-model-analysis-tools h3 span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-md); font-weight: 500; }
+
+.chatluna-studio-model-analysis-card,
+.chatluna-studio-model-analysis-tool-card {
+  --chatluna-studio-role: var(--chatluna-studio-role-system);
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-top: 2px solid var(--chatluna-studio-role);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface);
+  scroll-margin-top: 12px;
+}
+.chatluna-studio-model-analysis-card.is-user { --chatluna-studio-role: var(--chatluna-studio-role-user); }
+.chatluna-studio-model-analysis-card.is-assistant { --chatluna-studio-role: var(--chatluna-studio-role-assistant); }
+.chatluna-studio-model-analysis-card.is-response { --chatluna-studio-role: var(--chatluna-studio-role-response); }
+.chatluna-studio-model-analysis-card.is-tool-result { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }
+.chatluna-studio-model-analysis-tool-card { --chatluna-studio-role: var(--chatluna-studio-role-tool); }
+.chatluna-studio-model-analysis-card.is-located,
+.chatluna-studio-model-analysis-tool-card.is-located,
+.chatluna-studio-model-analysis-tools.is-located,
+.chatluna-studio-model-analysis-tool-call.is-located {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 8%, var(--chatluna-studio-surface));
+}
+.chatluna-studio-model-analysis-card > header { gap: 9px; min-width: 0; min-height: 44px; padding: 8px 12px; border-bottom: 1px solid var(--chatluna-studio-border); }
+.chatluna-studio-model-analysis-card.is-collapsed > header { border-bottom: 0; }
+.chatluna-studio-model-analysis-collapse svg { transition: transform 160ms ease; }
+.chatluna-studio-model-analysis-card:not(.is-collapsed) .chatluna-studio-model-analysis-collapse svg { transform: rotate(180deg); }
+.chatluna-studio-model-analysis-role {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--chatluna-studio-role);
+  background: color-mix(in srgb, var(--chatluna-studio-role) 12%, var(--chatluna-studio-surface));
+  font-size: var(--chatluna-studio-font-xs);
+  font-weight: 700;
+  text-transform: lowercase;
+}
+.chatluna-studio-model-analysis-index, .chatluna-studio-model-analysis-path, .chatluna-studio-model-analysis-chars { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chatluna-studio-model-analysis-chars {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.chatluna-studio-model-analysis-section { display: grid; gap: 8px; padding: 14px 16px; }
+.chatluna-studio-model-analysis-section + .chatluna-studio-model-analysis-section { border-top: 1px solid var(--chatluna-studio-border); }
+.chatluna-studio-model-analysis-section > strong { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); text-transform: uppercase; }
+.chatluna-studio-model-analysis-section pre, .chatluna-studio-model-analysis-tool-call pre { margin: 0; overflow-wrap: anywhere; color: var(--chatluna-studio-text); font-family: var(--chatluna-studio-font-mono); font-size: var(--chatluna-studio-font-md); line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: text; }
+.chatluna-studio-model-analysis-text-wrap { position: relative; }
+.chatluna-studio-model-analysis-section.is-collapsed .chatluna-studio-model-analysis-text-wrap > pre {
+  max-height: var(--chatluna-studio-model-analysis-collapse-height);
+  overflow: hidden;
+  /* 用 mask 把裁切末行渐隐到透明。半透明实色遮罩会让被 overflow 裁掉的字形笔画透出来，
+     且卡片表面、工具调用 muted 底和定位高亮底对不齐。 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+}
+.chatluna-studio-model-analysis-expand { display: flex; width: 100%; align-items: center; justify-content: center; gap: 4px; padding: 4px 0; border: 0; color: var(--chatluna-studio-accent); background: transparent; font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-expand svg { flex-shrink: 0; transition: transform 160ms ease; }
+.chatluna-studio-model-analysis-section:not(.is-collapsed) .chatluna-studio-model-analysis-expand svg { transform: rotate(180deg); }
+.chatluna-studio-model-analysis-tool-call { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--chatluna-studio-border); border-radius: 6px; background: var(--chatluna-studio-surface-muted); }
+.chatluna-studio-model-analysis-tool-call.is-call,
+.chatluna-studio-model-analysis-tool-call.is-result {
+  --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction);
+  border-top-width: 2px;
+  border-top-color: var(--chatluna-studio-role);
+}
+.chatluna-studio-model-analysis-tool-call > div { justify-content: space-between; gap: 12px; }
+.chatluna-studio-model-analysis-tool-call.is-call > div > strong,
+.chatluna-studio-model-analysis-tool-call.is-result > div > strong { color: var(--chatluna-studio-role); }
+.chatluna-studio-model-analysis-tool-call span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-link { width: max-content; padding: 0; border: 0; color: var(--chatluna-studio-accent); background: transparent; font-size: var(--chatluna-studio-font-xs); text-decoration: underline; }
+.chatluna-studio-model-analysis-response-meta { gap: 16px; padding: 10px 16px; border-top: 1px solid var(--chatluna-studio-border); color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-json { min-height: 180px; padding: 12px; }
+.chatluna-studio-model-analysis-json .chatluna-studio-model-request-json-viewer { min-height: 160px; }
+.chatluna-studio-model-analysis-empty { padding: 28px 16px; color: var(--chatluna-studio-muted); text-align: center; }
+.chatluna-studio-model-analysis-empty p { margin: 0 0 12px; }
+.chatluna-studio-model-analysis-parts { display: grid; min-width: 0; }
+.chatluna-studio-model-analysis-section.is-compact { padding: 0; }
+.chatluna-studio-model-analysis-section mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  color: inherit;
+  background: color-mix(in srgb, #facc15 48%, transparent);
+}
+.chatluna-studio-model-analysis-section mark.chatluna-studio-model-analysis-occurrence {
+  padding: 1px 2px;
+  outline: 2px solid color-mix(in srgb, var(--chatluna-studio-accent) 72%, transparent);
+  outline-offset: 1px;
+  background: color-mix(in srgb, #facc15 68%, transparent);
+  scroll-margin-top: 12px;
+}
+.chatluna-studio-model-analysis-section mark.chatluna-studio-model-analysis-occurrence.is-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.35em;
+  margin: 0 1px;
+  padding: 0;
+  border-radius: 1px;
+  outline: 0;
+  background: var(--chatluna-studio-accent);
+  vertical-align: -0.28em;
+}
+.chatluna-studio-model-analysis-image {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  max-width: min(100%, 536px);
+  margin: 0;
+  padding: 14px 16px;
+}
+.chatluna-studio-model-analysis-image + .chatluna-studio-model-analysis-section,
+.chatluna-studio-model-analysis-section + .chatluna-studio-model-analysis-image { border-top: 1px solid var(--chatluna-studio-border); }
+.chatluna-studio-model-analysis-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 8px;
+  object-fit: contain;
+}
+.chatluna-studio-model-analysis-image figcaption,
+.chatluna-studio-model-analysis-source-path {
+  color: var(--chatluna-studio-muted);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-2xs);
+}
+.chatluna-studio-model-analysis-source-path { padding: 0 2px 8px; overflow-wrap: anywhere; }
+.chatluna-studio-model-analysis-raw-text {
+  min-height: 160px;
+  margin: 0;
+  padding: 14px;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+  background: var(--chatluna-studio-surface-muted);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-sm);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.chatluna-studio-model-analysis-response-heading { padding-top: 4px; }
+.chatluna-studio-model-analysis-response-heading h3 { margin: 0; color: var(--chatluna-studio-text); font-size: var(--chatluna-studio-font-xl); }
+
+.chatluna-studio-model-analysis-variables {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+.chatluna-studio-model-analysis-variable-list { display: grid; gap: 8px; }
+.chatluna-studio-model-analysis-variable-card {
+  --chatluna-studio-role: var(--chatluna-studio-role-variable);
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-top: 2px solid var(--chatluna-studio-role);
+  border-radius: 8px;
+  background: var(--chatluna-studio-surface);
+  scroll-margin-top: 12px;
+}
+.chatluna-studio-model-analysis-variable-card.is-located {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 8%, var(--chatluna-studio-surface));
+}
+.chatluna-studio-model-analysis-variable-card > header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chatluna-studio-border);
+}
+.chatluna-studio-model-analysis-variable-card > header > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-sm);
+}
+.chatluna-studio-model-analysis-variable-preset {
+  margin-left: auto;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+}
+.chatluna-studio-model-analysis-variable-card.is-collapsed > header { border-bottom: 0; }
+.chatluna-studio-model-analysis-variable-card:not(.is-collapsed) .chatluna-studio-model-analysis-collapse svg { transform: rotate(180deg); }
+.chatluna-studio-model-analysis-variable-body { min-width: 0; }
+.chatluna-studio-model-analysis-variable-body > .chatluna-studio-model-analysis-section {
+  padding: 14px 16px;
+}
+.chatluna-studio-model-history-preview-wrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+.chatluna-studio-model-history-preview-wrap.is-collapsed .chatluna-studio-model-history-preview {
+  max-height: var(--chatluna-studio-model-history-collapse-height);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 72px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 72px), transparent);
+}
+.chatluna-studio-model-history-preview {
+  display: grid;
+  min-width: 0;
+  container-type: inline-size;
+}
+.chatluna-studio-model-history-expand {
+  padding: 8px 0 10px;
+}
+.chatluna-studio-model-history-preview-wrap:not(.is-collapsed) .chatluna-studio-model-history-expand svg {
+  transform: rotate(180deg);
+}
+.chatluna-studio-model-history-message {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 11px 14px;
+}
+.chatluna-studio-model-history-message + .chatluna-studio-model-history-message { padding-top: 8px; }
+.chatluna-studio-model-history-line {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  width: min(78%, 760px);
+  min-width: 0;
+}
+.chatluna-studio-model-history-message.is-bot { justify-items: end; }
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-line { align-items: flex-end; }
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-meta { justify-content: flex-end; }
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-content { text-align: right; }
+.chatluna-studio-model-history-message.is-bot > .chatluna-studio-model-history-quote {
+  border-right: 3px solid rgb(148 163 184 / 70%);
+  border-left: 0;
+  text-align: right;
+}
+.chatluna-studio-model-history-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+}
+.chatluna-studio-model-history-meta .studio-badge {
+  max-width: min(240px, 38vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chatluna-studio-model-history-meta .studio-badge.is-name.is-user {
+  color: #9d174d;
+  background: #fce7f3;
+}
+.chatluna-studio-model-history-meta .studio-badge.is-name.is-bot {
+  color: #7e22ce;
+  background: #f3e8ff;
+}
+.chatluna-studio-model-history-meta .studio-badge.is-id {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-history-meta .studio-badge.is-name.is-user {
+  color: #fbcfe8;
+  background: #831843;
+}
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-history-meta .studio-badge.is-name.is-bot {
+  color: #e9d5ff;
+  background: #581c87;
+}
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-history-meta .studio-badge.is-id {
+  color: #bfdbfe;
+  background: #1e3a8a;
+}
+.chatluna-studio-model-history-content {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  width: fit-content;
+  max-width: min(100%, var(--chatluna-studio-model-history-content-max-width, 100%));
+  min-width: 0;
+  color: var(--chatluna-studio-text);
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.55;
+}
+.chatluna-studio-model-history-content-line {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.chatluna-studio-model-history-content-line:empty::before { content: "\00a0"; }
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-content-line {
+  align-self: flex-end;
+  text-align: left;
+}
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-content-line.is-single-visual-line {
+  text-align: right;
+}
+.chatluna-studio-model-history-quote.chatluna-studio-message-quote {
+  width: min(100%, 620px);
+  margin: 0;
+  color: var(--chatluna-studio-muted);
+  background: var(--chatluna-studio-surface-muted);
+}
+/* 聊天消息中的引用为紧凑单行摘要；模型请求历史承担证据阅读，正文不能继承省略号裁切。 */
+.chatluna-studio-model-history-quote.chatluna-studio-message-quote > span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chatluna-studio-model-history-quote .chatluna-studio-message-quote-title { color: var(--chatluna-studio-text); }
+.chatluna-studio-model-history-quote .chatluna-studio-model-history-quote {
+  width: 100%;
+  margin: 3px 0;
+}
+.chatluna-studio-model-history-quote-id {
+  color: var(--chatluna-studio-muted);
+  font-weight: 400;
+}
+@container (max-width: 680px) {
+  .chatluna-studio-model-history-line { width: min(100%, 560px); }
+}
+@container (max-width: 520px) {
+  .chatluna-studio-model-history-meta .studio-badge { max-width: min(100%, 72vw); }
+}
+.chatluna-studio-model-analysis-variable-status,
+.chatluna-studio-model-analysis-variable-empty {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+}
+.chatluna-studio-model-analysis-variable-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chatluna-studio-model-analysis-variable-empty > span {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--chatluna-studio-role-variable) 35%, var(--chatluna-studio-border));
+  border-radius: 999px;
+  color: var(--chatluna-studio-role-variable);
+  background: color-mix(in srgb, var(--chatluna-studio-role-variable) 9%, transparent);
+  font-size: var(--chatluna-studio-font-2xs);
+  font-weight: 700;
+}
+
+.chatluna-studio-model-analysis-tools {
+  display: grid;
+  gap: 10px;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  scroll-margin-top: 12px;
+}
+.chatluna-studio-model-analysis-tool-summary {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  color: var(--chatluna-studio-text);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  user-select: text;
+}
+.chatluna-studio-model-analysis-tool-summary:hover,
+.chatluna-studio-model-analysis-tool-summary:focus-visible { background: var(--chatluna-studio-hover); }
+/* 工具行是 flex。不锁死 SVG 会被描述和 props 挤扁；缩小后扳手看起来像放大镜。 */
+.chatluna-studio-model-analysis-tool-summary > svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+.chatluna-studio-model-analysis-tool-summary > svg:first-child { color: var(--chatluna-studio-role); }
+.chatluna-studio-model-analysis-tool-copy {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+/* 工具摘要在分析页和轨迹检查器中使用同一套收缩顺序：名称优先，描述省略，属性统计保持完整。
+   三段文本必须显式各占一档字号：三者原先都没写 font-size，工具名和描述一起继承成
+   16px、属性统计被 Tailwind preflight 的 small{80%} 变成 12.8px，等宽的英文工具名
+   和同字号的中文描述放在一行时，中文字面高度接近字号本身、等宽 Latin 只有六成，
+   看起来就是"描述比工具名大一号"。名称 md > 描述 sm > 统计 xs，层级才和颜色一致。 */
+.chatluna-studio-model-analysis-tool-copy > strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--chatluna-studio-role);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chatluna-studio-model-analysis-tool-copy > .chatluna-studio-model-analysis-tool-desc {
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.chatluna-studio-model-analysis-tool-desc > span {
+  display: block;
+  overflow: hidden;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@container (max-width: 3em) {
+  .chatluna-studio-model-analysis-tool-desc > span { display: none; }
+}
+@container chatluna-studio-trajectory-inspector (max-width: 500px) {
+  .chatluna-studio-model-analysis-tool-desc > span { display: none; }
+}
+.chatluna-studio-model-analysis-tool-copy > small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 箭头必须最后可见。不锁宽高会被 flex 挤成斜菱形。 */
+.chatluna-studio-model-analysis-tool-summary > .chatluna-studio-model-analysis-tool-chevron {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  overflow: visible;
+}
+.chatluna-studio-model-analysis-collapse {
+  flex: 0 0 auto;
+}
+.chatluna-studio-model-analysis-collapse svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+}
+.chatluna-studio-model-analysis-tool-card.is-expanded .chatluna-studio-model-analysis-tool-summary > .chatluna-studio-model-analysis-tool-chevron { transform: rotate(180deg); }
+.chatluna-studio-model-analysis-tool-detail { display: grid; gap: 12px; padding: 16px; border-top: 1px solid var(--chatluna-studio-border); }
+.chatluna-studio-model-analysis-tool-detail p, .chatluna-studio-model-analysis-tool-detail h4 { margin: 0; }
+.chatluna-studio-model-analysis-tool-detail h4 { font-family: var(--chatluna-studio-font-mono); font-size: var(--chatluna-studio-font-sm); font-weight: 500; }
+.chatluna-studio-model-analysis-tool-detail h4 small { margin-left: 8px; color: var(--chatluna-studio-muted); }
+.chatluna-studio-model-analysis-tool-schema.chatluna-studio-model-request-json-viewer {
+  min-height: 0;
+  padding: 12px;
+}
+
+@container (max-width: 680px) {
+  .chatluna-studio-model-analysis-main { grid-template-columns: 190px minmax(0, 1fr); }
+}
+
+@container (max-width: 520px) {
+  .chatluna-studio-model-analysis-main { grid-template-columns: 1fr; }
+  .chatluna-studio-model-analysis-nav { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--chatluna-studio-border); }
+}
+
+@media (max-width: 960px) {
+  .chatluna-studio-model-request-workspace {
+    padding: 16px;
+  }
+
+  .chatluna-studio-model-request-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(180px, 36%) minmax(0, 1fr);
+  }
+
+  .chatluna-studio-model-trajectory-ledger.has-inspector {
+    grid-template-columns: 1fr;
+  }
+
+  .chatluna-studio-model-trajectory-inspector {
+    border-top: 1px solid var(--chatluna-studio-border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .chatluna-studio-model-request-overview-grid,
+  .chatluna-studio-model-request-usage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chatluna-studio-model-request-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .chatluna-studio-model-request-detail-nav {
+    margin-left: 0;
+  }
+
+  .chatluna-studio-model-trajectory-table > header,
+  .chatluna-studio-model-trajectory-row {
+    grid-template-columns: 38px 92px minmax(0, 1fr);
+  }
+
+}

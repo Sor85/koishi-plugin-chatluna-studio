@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'koishi-plugin-chatluna-studio@*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: 启用 Corepack
+        run: corepack enable
+
+      - name: 安装依赖
+        run: yarn install --immutable
+
+      - name: 校验发布标签
+        run: |
+          node <<'NODE'
+          const packageJson = require('./package.json')
+          const expectedTag = `${packageJson.name}@${packageJson.version}`
+
+          if (process.env.GITHUB_REF_NAME !== expectedTag) {
+            console.error(`发布标签应为 ${expectedTag}，实际为 ${process.env.GITHUB_REF_NAME}`)
+            process.exit(1)
+          }
+          NODE
+
+      - name: 运行测试
+        run: yarn test
+
+      - name: 检查类型
+        run: yarn typecheck
+
+      - name: 构建插件
+        run: yarn build
+
+      - name: 发布到 npm
+        run: npm publish --access public

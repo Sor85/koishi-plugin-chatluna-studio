@@ -1,0 +1,36 @@
+/* Portal 面板的控件颜色统一由 chatluna-studio-primitives.css 的 shadcn 控件基线提供（令牌镜像见 chatluna-studio-tokens.css），
+   这里只保留二级菜单的间距令牌。 */
+[data-slot='dialog-content'],
+[data-slot='popover-content'] {
+  --chatluna-studio-secondary-title-gap: 4px;
+  --chatluna-studio-secondary-row-gap: 8px;
+  --chatluna-studio-secondary-section-gap: 16px;
+}
+
+.chatluna-studio-avatar-editor-trigger .chatluna-studio-identity-avatar {
+  --chatluna-studio-avatar-size: 80px;
+
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatluna-studio-accent) 18%, transparent);
+}
+
+.chatluna-studio-group-member-editor-heading .chatluna-studio-identity-avatar {
+  --chatluna-studio-avatar-size: 40px;
+}
+
+@media (max-width: 640px) {
+}
+
+/* 实体态必须同时覆盖不透明背景：基类是 92% 半透明 + blur 的雾化外观，
+   只关 backdrop-filter 不改背景会穿帮成"透明但不模糊"的中间态。
+   毛玻璃开关统一经 body[data-chatluna-studio-frosted]（useFrostedSurfaceFlag）下发：
+   开启时本条整体退出，回落基类雾化样式，与其他 teleport 面板共用一套机制。 */
+body:not([data-chatluna-studio-frosted]) .chatluna-studio-secondary-page.chatluna-studio-solid-secondary-surface {
+  border-color: var(--chatluna-studio-secondary-outline);
+  background: var(--chatluna-studio-panel);
+  box-shadow: var(--chatluna-studio-secondary-shadow);
+  backdrop-filter: none;
+}

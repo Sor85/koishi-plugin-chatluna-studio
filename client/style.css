@@ -1,0 +1,15 @@
+/* tailwind.generated.css 由 yarn build:css 从 tailwind.source.css 预编译；
+   不直接 @import "tailwindcss"——控制台 devMode 用宿主 vite（无 Tailwind
+   插件）加载本文件时无法生成工具类，只能消费编译完成的静态产物。 */
+@import "./styles/tailwind.generated.css";
+@import "./styles/shadcn-theme.css";
+/* 以下五条的顺序本身是级联的一部分：跨能力令牌与原语在前，各能力目录下的区域表居中，
+   跨区域断点收尾。区域表按能力归属散在 client/<能力>/ 下，因此路径不再透露加载次序——
+   调整顺序、合并或拆分文件都不会报错，只会让某处颜色或间距静默变样。 */
+@import "./styles/chatluna-studio-tokens.css";
+@import "./workspace/workspace.css";
+@import "./styles/chatluna-studio-primitives.css";
+@import "./workspace/overlays.css";
+@import "./model-request/styles.css";
+@import "./preset/styles.css";
+@import "./styles/chatluna-studio-responsive.css";

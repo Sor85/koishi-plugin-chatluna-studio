@@ -1,0 +1,47 @@
+/* Tailwind 编译入口——只被 @tailwindcss/cli 消费（yarn build:css），输出
+   client/styles/tailwind.generated.css 供 style.css 以普通 CSS 方式引入。
+
+   为什么要预编译：Koishi 控制台 devMode 会用宿主自己的 vite（没有任何
+   Tailwind 插件）直接加载本插件的 client/ 源码，`@import "tailwindcss"`
+   只会注入未编译的原始包 CSS，工具类永远不会生成——此前日历显示的
+   size-8/p-0 等其实是"借"了宿主里其他插件打包的同名类，缺一个类就烂
+   一块。预编译成静态文件后，dev（宿主 vite）和 prod（本仓库 vite lib
+   构建）拿到的是同一份完整产物，不再依赖宿主的编译能力。 */
+
+/* source(none) + @source：只扫描 client/ 目录，避免 CLI 按 cwd 扫到
+   src/、docs/ 等无关文件。 */
+@import "tailwindcss" source(none);
+@source "../";
+
+/* 宿主控制台没有 .dark 类；dark: 变体跟随本插件 useResolvedColorMode 的
+   两个落点（工作区元素的 data-color-mode 与 body 上的镜像属性）。 */
+@custom-variant dark (&:is(.dark *, [data-color-mode="dark"] *, body[data-studio-color-scheme="dark"] *));
+
+/* shadcn 语义色与 radius 标度映射（shadcn-vue Tailwind v4 标准接线）。
+   没有这份映射，Tailwind 不会生成 bg-background、text-muted-foreground、
+   data-[selected]:bg-primary 等语义工具类。变量默认值见 shadcn-theme.css。 */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
