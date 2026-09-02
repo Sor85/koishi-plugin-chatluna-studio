@@ -100,7 +100,11 @@ body[data-studio-color-scheme="dark"] .chatluna-studio-page {
   font-size: var(--chatluna-studio-font-xs);
 }
 
+/* 主内容区是网格容器：两个工作台都用 `grid-template-rows: auto auto minmax(0, 1fr)` 把标题、
+   状态位与内容分成三行，内容那一行必须能吃掉剩余高度。少了这一行 `display: grid`，行模板
+   静默失效，列表与详情面板会缩到内容高度——不报错，只是面板看起来被裁掉了。 */
 .chatluna-studio-chat {
+  display: grid;
   grid-column: 1;
   grid-row: 2;
   min-width: 0;
