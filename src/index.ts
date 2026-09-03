@@ -59,7 +59,7 @@ export const Config: Schema<Config> = Schema.object({
   persistenceMode: Schema.union([
     Schema.const('memory').description('服务端内存'),
     Schema.const('database').description('Koishi Database'),
-  ]).default('memory').role('radio').description('模型请求记录的存储方式。内存模式重启后记录清空'),
+  ]).default('database').role('radio').description('模型请求记录的存储方式。内存模式重启后记录清空'),
   modelRequestRecordLimit: Schema.number().min(1).default(DEFAULT_MODEL_REQUEST_RECORD_LIMIT)
     .description('保留的模型请求记录条数上限，超出后从最旧记录开始丢弃'),
   studioColorMode: Schema.union([
