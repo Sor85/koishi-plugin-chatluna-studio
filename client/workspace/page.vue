@@ -7,36 +7,37 @@
         :data-color-mode="resolvedColorMode"
         :style="{ '--chatluna-studio-accent': appearance.studioAccentColor }"
       >
-        <header class="chatluna-studio-topbar">
-          <span class="chatluna-studio-topbar-title">
-            <IconSparkles :size="18" aria-hidden="true" />
-            ChatLuna 工作室
-          </span>
-          <nav class="chatluna-studio-topbar-views" aria-label="工作室页面">
-            <Button
-              size="sm"
-              :variant="currentView === 'model-requests' ? 'secondary' : 'ghost'"
+        <!-- 悬浮导航栏：折叠态只露图标，鼠标悬停或键盘聚焦时向左展开出文字。
+             文字始终留在 DOM 里（折叠时被卡片裁掉），因此读屏软件在两种状态下读到的都是同一份标签。
+             `nav` 就是卡片本身：这层只有两个页面入口，再套一层容器只会多一个没有样式的节点。 -->
+        <div class="chatluna-studio-sidebar">
+          <nav class="chatluna-studio-sidebar-rail" aria-label="工作室页面">
+            <button
+              type="button"
+              class="chatluna-studio-sidebar-item"
+              :class="{ 'is-active': currentView === 'model-requests' }"
               :aria-current="currentView === 'model-requests' ? 'page' : undefined"
               @click="shell.selectView('model-requests')"
             >
-              <IconRoute data-icon="inline-start" aria-hidden="true" />
-              模型请求
-            </Button>
-            <Button
-              size="sm"
-              :variant="currentView === 'presets' ? 'secondary' : 'ghost'"
+              <span class="chatluna-studio-sidebar-icon">
+                <IconRoute :size="20" aria-hidden="true" />
+              </span>
+              <span class="chatluna-studio-sidebar-label">模型请求</span>
+            </button>
+            <button
+              type="button"
+              class="chatluna-studio-sidebar-item"
+              :class="{ 'is-active': currentView === 'presets' }"
               :aria-current="currentView === 'presets' ? 'page' : undefined"
               @click="shell.selectView('presets')"
             >
-              <IconFileCode data-icon="inline-start" aria-hidden="true" />
-              预设
-            </Button>
+              <span class="chatluna-studio-sidebar-icon">
+                <IconFileCode :size="20" aria-hidden="true" />
+              </span>
+              <span class="chatluna-studio-sidebar-label">预设</span>
+            </button>
           </nav>
-          <span class="chatluna-studio-topbar-status" role="status">
-            <IconDatabase :size="14" aria-hidden="true" />
-            {{ persistenceLabel }}
-          </span>
-        </header>
+        </div>
 
         <ModelRequestWorkspace
           v-if="currentView === 'model-requests'"
@@ -90,9 +91,8 @@
 </template>
 
 <script setup lang="ts">
-import { IconDatabase, IconFileCode, IconRoute, IconSparkles } from '@tabler/icons-vue'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { Button } from '#client/components/ui/button'
+import { IconFileCode, IconRoute } from '@tabler/icons-vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import ModelRequestWorkspace from '#client/model-request/workspace.vue'
 import PresetWorkspace from '#client/preset/workspace.vue'
 import { createKoishiModelRequestPort } from '#client/model-request/koishi-port'
@@ -120,12 +120,6 @@ const model = shell.modelRequestWorkspaceModel
 const preset = shell.presetWorkspaceModel
 const resolvedColorMode = useResolvedColorMode(appearance)
 useFrostedSurfaceFlag(appearance)
-
-const persistenceLabel = computed(() => {
-  const persistence = shell.persistence.value
-  if (persistence.mode === 'memory') return '记录存内存，重启后清空'
-  return persistence.available ? '记录已落库' : persistence.message || '数据库不可用，记录不落盘'
-})
 
 /**
  * 预设工作台的写操作用 resolve/reject 回执驱动自己的对话框与脏值状态。

@@ -122,7 +122,8 @@ describe('Studio 预设工作台源码契约', () => {
     expect(styles).toMatch(/\.chatluna-studio-preset-expression-tooltip-action \.chatluna-studio-preset-expression-tooltip-link\s*\{[^}]*height:\s*24px/s)
     expect(styles).toMatch(/\.chatluna-studio-preset-expression\.is-value\s*\{[^}]*text-decoration:\s*underline;[^}]*\}/s)
     expect(styles).not.toMatch(/\.chatluna-studio-preset-expression\.is-value\s*\{[^}]*cursor:/s)
-    expect(styles).toContain('padding: 24px')
+    // 区域内边距取跨区域令牌：右侧悬浮导航栏的外侧留白同源于它，各写一份字面值会让卡片悄悄偏心。
+    expect(styles).toContain('padding: var(--chatluna-studio-region-padding)')
     expect(styles).toContain('grid-template-columns: minmax(280px, 360px) minmax(0, 1fr)')
     expect(styles).toContain('border-radius: 16px')
     expect(styles).toMatch(/\.chatluna-studio-preset-list-pane,\s*\n\s*\.chatluna-studio-preset-editor-pane\s*\{[^}]*display:\s*grid/s)

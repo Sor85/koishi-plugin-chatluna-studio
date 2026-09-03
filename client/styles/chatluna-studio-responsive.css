@@ -2,7 +2,8 @@
 
    Koishi 在 ≤768px 把 .main-container 改成 `position: fixed; left: 0; width: 100vw`，
    于是本页会整块压到活动栏底下。这里按活动栏宽度把页面推回来——它是本插件唯一需要的断点：
-   工作区是单列网格（顶栏 + 内容区两行），列宽不随视口变化。 */
+   工作区是两列网格（内容区 + 右侧悬浮导航栏），两列宽度都不随视口变化，导航栏展开也只是
+   卡片向左盖住内容而不改列宽。 */
 @media (max-width: 768px) {
   .chatluna-studio-page {
     margin-left: var(--activity-width, 3.5rem);

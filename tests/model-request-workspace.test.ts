@@ -9,7 +9,7 @@ import {
 import { createModelRequestEnterRefresh, createModelRequestLiveRefresh, MODEL_REQUEST_LIVE_REFRESH_INTERVAL_MS } from '../client/model-request/live-refresh'
 
 describe('Studio 模型请求工作台', () => {
-  it('页面入口与装配：顶栏切到独立视图，页面只传筛选可选值与访问计数，不传容量上限', () => {
+  it('页面入口与装配：侧栏切到独立视图，页面只传筛选可选值与访问计数，不传容量上限', () => {
     const pageSource = readFileSync(resolve('client/workspace/page.vue'), 'utf8')
     const workspaceSource = readFileSync(resolve('client/model-request/workspace.vue'), 'utf8')
 

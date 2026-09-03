@@ -51,9 +51,30 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
    来自 Tailwind preflight 写在 html 上的那条无作用域规则；preflight 限定作用域后
    该规则被整条丢弃（详见 docs/adr/0068），这三项在此显式声明。 */
 .chatluna-studio-workspace {
+  /* 内容区四周留白。两个工作台各自 `padding: var(--chatluna-studio-region-padding)`，
+     悬浮导航栏的外侧留白也取同一个值——见下面 --chatluna-studio-sidebar-inset。 */
+  --chatluna-studio-region-padding: 24px;
+
+  /* 悬浮导航栏的几何量。尺度对齐内容区：图标盒 44px 与列表头像（38px）、shadcn 按钮（36px）
+     同一量级，圆角与面板一致取 16px。
+     折叠宽度里的 2px 是卡片自己的左右边框：工作区是 border-box，漏算这 2px 时卡片内容宽会比
+     图标盒窄 2px，图标被裁掉一条边并偏移 1px——不报错，只是折叠态图标看着没居中。
+
+     导航列宽只算「卡片 + 一份外侧留白」：卡片靠 right 定位，这份留白落在卡片右边（到浏览器
+     边缘），卡片左边缘正好压在内容列的边界上，左侧那段距离由内容区自己的 padding 提供。
+     两段留白因此都等于 --chatluna-studio-region-padding，卡片在内容卡片与窗口边缘之间居中。
+     写成 `+ inset * 2` 会让左边多出一份留白，卡片看着偏右贴边。 */
+  --chatluna-studio-sidebar-icon: 44px;
+  --chatluna-studio-sidebar-pad: 8px;
+  --chatluna-studio-sidebar-inset: var(--chatluna-studio-region-padding);
+  --chatluna-studio-sidebar-gap: 12px;
+  --chatluna-studio-sidebar-rail: calc(var(--chatluna-studio-sidebar-icon) + var(--chatluna-studio-sidebar-pad) * 2 + 2px);
+  --chatluna-studio-sidebar-rail-open: 224px;
+  --chatluna-studio-sidebar-column: calc(var(--chatluna-studio-sidebar-rail) + var(--chatluna-studio-sidebar-inset));
+
   display: grid;
-  grid-template-rows: 48px minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) var(--chatluna-studio-sidebar-column);
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -66,38 +87,122 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   -webkit-tap-highlight-color: transparent;
 }
 
-.chatluna-studio-topbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--chatluna-studio-border);
-  background: var(--chatluna-studio-panel);
+/* 导航列在右侧，只占折叠宽度；展开由列内的绝对定位卡片向左盖住内容完成。
+   展开若改的是网格列宽，左侧列表与详情面板会跟着重排——鼠标扫过侧栏时整页抖一次。
+   z-index 也必须写在这一层：卡片的定位上下文在这里，内容区是 DOM 里更早的兄弟节点，
+   不给层级时右侧内容里带定位的面板会盖住展开后的卡片，看起来像文字只露出一半。 */
+.chatluna-studio-sidebar {
+  position: relative;
+  z-index: 30;
+  grid-column: 2;
+  grid-row: 1;
 }
 
-.chatluna-studio-topbar-title {
+/* 卡片贴住导航列右边缘并垂直居中：`inset-block` 留出上下留白，`margin-block: auto`
+   把剩余空间均分到两侧。`height: max-content` 不能省——上下同时给了定位值而高度是 auto 时，
+   绝对定位盒会被拉满整列高度，`margin: auto` 没有剩余空间可分，卡片会静默变成一条通高白板。
+   靠 `right` 定位而不是 `left`：右边缘固定，宽度增长自然向左展开，图标那一列不会跟着平移。
+   阴影自己写一份而不取 --chatluna-studio-secondary-shadow：那一份是给 Portal 浮层用的重投影，
+   落在这张小卡片上会比周围只有 1px 边框的面板重出一个量级。
+   雾化外观下这里仍用实心面板色：工作区层禁止声明 backdrop-filter（详见 docs/adr/0019），
+   只做半透明而没有模糊会让底下的列表文字直接透过图标。 */
+.chatluna-studio-sidebar-rail {
+  position: absolute;
+  inset-block: var(--chatluna-studio-sidebar-inset);
+  right: var(--chatluna-studio-sidebar-inset);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  margin-right: 8px;
-  font-size: var(--chatluna-studio-font-md);
+  width: var(--chatluna-studio-sidebar-rail);
+  height: max-content;
+  margin-block: auto;
+  padding: var(--chatluna-studio-sidebar-pad);
+  overflow: hidden;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 16px;
+  background: var(--chatluna-studio-panel);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 8%);
+  transition: width 0.18s ease;
+}
+
+/* 暗色下同一份 rgb(15 23 42) 几乎看不出来，换成更深的底色并略提不透明度，
+   保持与内容区一样的「轻微抬起」而不是重投影。 */
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-sidebar-rail {
+  box-shadow: 0 4px 12px rgb(9 9 11 / 28%);
+}
+
+/* 键盘那一路用 :has(:focus-visible) 而不是 :focus-within：按钮点完仍然带着焦点，
+   写 :focus-within 会让卡片在鼠标移开后继续展开，一直盖着右侧内容的左上角。
+   :focus-visible 只在键盘/程序聚焦时命中，鼠标点击不会命中，正好是想要的两种展开途径。 */
+.chatluna-studio-sidebar-rail:hover,
+.chatluna-studio-sidebar-rail:has(:focus-visible) {
+  width: var(--chatluna-studio-sidebar-rail-open);
+}
+
+/* 行宽取卡片内容宽（折叠时正好等于图标盒），因此激活底色在折叠态是圆角方块、展开态是整条胶囊，
+   和卡片宽度一起过渡。
+   `row-reverse` 把图标钉在行的右端：卡片贴右边缘，图标那一列的屏幕位置在两种状态下完全一致，
+   文字从图标左侧长出来。写成正序时图标会随卡片左边缘一起平移 150px，看起来像整条侧栏在跳。 */
+.chatluna-studio-sidebar-item {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: var(--chatluna-studio-sidebar-gap);
+  width: 100%;
+  min-height: var(--chatluna-studio-sidebar-icon);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-lg);
+  text-align: right;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.chatluna-studio-sidebar-icon {
+  display: inline-flex;
+  width: var(--chatluna-studio-sidebar-icon);
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+  justify-content: center;
+}
+
+/* 标签宽度写死成展开后的实际可用宽度，不按 1fr 分剩余空间：跟着卡片宽度变化的列宽会让
+   文字在整个过渡过程里反复重排断行，看起来像抖动。固定宽度只会被卡片裁掉。 */
+.chatluna-studio-sidebar-label {
+  width: calc(var(--chatluna-studio-sidebar-rail-open) - var(--chatluna-studio-sidebar-rail) - var(--chatluna-studio-sidebar-gap));
+  flex: none;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: opacity 0.18s ease;
+}
+
+.chatluna-studio-sidebar-rail:hover .chatluna-studio-sidebar-label,
+.chatluna-studio-sidebar-rail:has(:focus-visible) .chatluna-studio-sidebar-label {
+  opacity: 1;
+}
+
+.chatluna-studio-sidebar-item:hover {
+  color: var(--chatluna-studio-text);
+  background: var(--chatluna-studio-hover);
+}
+
+.chatluna-studio-sidebar-item.is-active {
+  color: var(--chatluna-studio-accent);
+  background: color-mix(in srgb, var(--chatluna-studio-accent) 10%, transparent);
   font-weight: 600;
 }
 
-.chatluna-studio-topbar-views {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.chatluna-studio-topbar-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  color: var(--chatluna-studio-text-muted);
-  font-size: var(--chatluna-studio-font-xs);
+/* 焦点环必须内缩：卡片 overflow: hidden 会把外扩的描边整圈裁掉，键盘用户看不到落点。 */
+.chatluna-studio-sidebar-item:focus-visible {
+  outline: 2px solid var(--chatluna-studio-accent);
+  outline-offset: -2px;
 }
 
 /* 主内容区是网格容器：两个工作台都用 `grid-template-rows: auto auto minmax(0, 1fr)` 把标题、
@@ -106,7 +211,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
 .chatluna-studio-chat {
   display: grid;
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   min-width: 0;
   min-height: 0;
 }
@@ -118,13 +223,11 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   background: rgb(244 246 248 / 78%);
 }
 
-.chatluna-studio-workspace.is-frosted .chatluna-studio-chat,
-.chatluna-studio-workspace.is-frosted .chatluna-studio-topbar {
+.chatluna-studio-workspace.is-frosted .chatluna-studio-chat {
   background: rgb(248 250 252 / 34%);
 }
 
-.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-chat,
-.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-topbar {
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-chat {
   background: rgb(44 44 48);
 }
 
@@ -132,7 +235,6 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   background: rgb(37 37 41);
 }
 
-.chatluna-studio-workspace.is-frosted[data-color-mode="dark"] .chatluna-studio-chat,
-.chatluna-studio-workspace.is-frosted[data-color-mode="dark"] .chatluna-studio-topbar {
+.chatluna-studio-workspace.is-frosted[data-color-mode="dark"] .chatluna-studio-chat {
   background: rgb(44 44 48);
 }
