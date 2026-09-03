@@ -1,6 +1,8 @@
 import { formatDuration } from '#client/shared/format-duration'
 import type {
+  StudioConversationType,
   StudioModelRequestDetail,
+  StudioModelRequestEntities,
   StudioModelRequestListItem,
   StudioModelRequestUsage,
   StudioPresetDocumentKind,
@@ -22,6 +24,55 @@ const MODEL_REQUEST_MISSING_TEXT = '—'
 export interface ModelRequestUsageCell {
   label: string
   value: string
+}
+
+export interface ModelRequestEntityChip {
+  key: keyof StudioModelRequestEntities
+  label: string
+  value: string
+}
+
+/**
+ * 关联实体徽标的项目、顺序与文案。
+ *
+ * 记录里的 entities 是采集时按赋值先后堆起来的对象，直接遍历会得到
+ * `botId · userId · botName · guildId` 这种交错顺序，同一个主体的名字和号码被拆到两头。
+ * 这里按「平台 → 机器人 → 用户 → 会话」重排，并把字段名换成界面文案；顺序是展示契约的
+ * 一部分，因此定义在这里一次，而不是在模板里手排九个徽标。
+ */
+const MODEL_REQUEST_ENTITY_FIELDS: readonly (readonly [keyof StudioModelRequestEntities, string])[] = [
+  ['platform', '平台'],
+  ['botName', '机器人'],
+  ['botId', '机器人 ID'],
+  ['userName', '用户'],
+  ['userId', '用户 ID'],
+  ['conversationType', '会话类型'],
+  ['conversationName', '会话'],
+  ['conversationId', '会话 ID'],
+  ['guildId', '群号'],
+]
+
+const MODEL_REQUEST_CONVERSATION_TYPE_TEXT: Record<StudioConversationType, string> = {
+  group: '群聊',
+  private: '私聊',
+}
+
+/**
+ * 空串与缺省都算没采集到：`platform=''` 渲染成一个空徽标，比不渲染更难看懂。
+ * 会话类型是枚举而不是标识符，要换成界面说法；持久化里落进意料之外的值时照原样显示，
+ * 显示 `undefined` 会把一次数据问题伪装成界面缺陷。
+ */
+export function buildModelRequestEntityChips(
+  entities: StudioModelRequestEntities,
+): ModelRequestEntityChip[] {
+  return MODEL_REQUEST_ENTITY_FIELDS.flatMap(([key, label]) => {
+    const raw = entities[key]
+    if (!raw) return []
+    const value = key === 'conversationType'
+      ? MODEL_REQUEST_CONVERSATION_TYPE_TEXT[raw as StudioConversationType] ?? raw
+      : raw
+    return [{ key, label, value }]
+  })
 }
 
 /** 模型 ID 与渠道名同一口径：采集到就照原样显示，空串与缺省都算没识别出来。 */

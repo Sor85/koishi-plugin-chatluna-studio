@@ -577,6 +577,36 @@
   letter-spacing: 0.03em;
 }
 
+/* 与请求地址同一套观感：等宽值加一个强调色小标签，不画方框，避免一行里堆出八个色块。 */
+.chatluna-studio-model-request-entities {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  /* 列间距要明显大于标签与值之间的 6px，否则换行后读不出哪个值属于哪个标签。 */
+  gap: 4px 16px;
+  font-family: var(--chatluna-studio-font-mono);
+}
+
+.chatluna-studio-model-request-entity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chatluna-studio-model-request-entity strong {
+  flex: 0 0 auto;
+  color: var(--chatluna-studio-accent);
+  font-size: var(--chatluna-studio-font-sm);
+  letter-spacing: 0.03em;
+}
+
+.chatluna-studio-model-request-entity-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--chatluna-studio-text);
+}
+
 .chatluna-studio-model-request-error-diagnostic {
   display: grid;
   gap: 12px;

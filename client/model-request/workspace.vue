@@ -326,7 +326,20 @@
             <p class="chatluna-studio-model-request-meta">
               <IconTopologyStar3 :size="17" aria-hidden="true" />
               <span class="chatluna-studio-model-request-meta-label">关联实体</span>
-              <span class="chatluna-studio-model-request-meta-value">{{ formatEntities(detail) }}</span>
+              <span
+                v-if="entityChips.length"
+                class="chatluna-studio-model-request-meta-value chatluna-studio-model-request-entities"
+              >
+                <span
+                  v-for="chip in entityChips"
+                  :key="chip.key"
+                  class="chatluna-studio-model-request-entity"
+                >
+                  <strong>{{ chip.label }}</strong>
+                  <span class="chatluna-studio-model-request-entity-value">{{ chip.value }}</span>
+                </span>
+              </span>
+              <span v-else class="chatluna-studio-model-request-meta-value">无关联实体</span>
             </p>
             <div v-if="detail.headers && Object.keys(detail.headers).length" class="chatluna-studio-model-request-meta chatluna-studio-model-request-headers">
               <IconBraces :size="17" aria-hidden="true" />
@@ -626,6 +639,7 @@ import { CHATLUNA_ERROR_CODE_DOCUMENTATION_URL, getChatLunaErrorPossibleCauses }
 import { formatDuration } from '#client/shared/format-duration'
 import { formatStudioDateTime } from '#client/shared/format-time'
 import {
+  buildModelRequestEntityChips,
   buildModelRequestUsageCells,
   formatModelRequestCount,
   formatModelRequestSource,
@@ -832,6 +846,7 @@ const responseTree = computed(() => buildModelRequestJsonTree(responseConversati
 const usage = computed<StudioModelRequestUsage | undefined>(() => responseConversation.value.usage)
 const chatlunaErrorCauses = computed(() => getChatLunaErrorPossibleCauses(props.detail?.chatlunaError))
 const usageItems = computed(() => buildModelRequestUsageCells(usage.value))
+const entityChips = computed(() => buildModelRequestEntityChips(props.detail?.entities ?? {}))
 const currentBodyText = computed(() => resolveModelRequestBodyText(props.detail, bodyView.value))
 const responseBodyLabel = computed(() => {
   const detail = props.detail
@@ -1127,11 +1142,6 @@ function downloadCurrentBody() {
   link.click()
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 0)
-}
-
-function formatEntities(record: StudioModelRequestDetail) {
-  const entries = Object.entries(record.entities).filter((entry) => entry[1])
-  return entries.length ? entries.map(([key, value]) => `${key}=${value}`).join(' · ') : '无关联实体'
 }
 
 function onVisibilityChange() {
