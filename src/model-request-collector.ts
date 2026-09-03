@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import diagnosticsChannel from 'node:diagnostics_channel'
 import { resolve } from 'node:path'
-import type { ChatLunaTurn } from './chatluna/session-tracker'
+import type { ChatLunaTurnResolution } from './chatluna/session-tracker'
 import { createModelRequestError, type StudioModelRequestStore } from './model-request'
 import type {
   StudioModelRequestRecord,
@@ -63,8 +63,12 @@ export interface InstallModelRequestCollectorOptions {
   baseDir?: string
   /** 全部模型请求都写进同一个记录库；归属与否只是记录上的一个字段。 */
   store: StudioModelRequestStore
-  /** 这次请求属于哪一轮对话；无法判定时返回 undefined，记录写成未归属。 */
-  resolveTurn: () => ChatLunaTurn | undefined
+  /**
+   * 这次请求属于哪一轮对话，以及要不要记下来。
+   *
+   * 判不出归属时记成未归属；确定由虚拟机器人触发时整条记录都不写。
+   */
+  resolveTurn: () => ChatLunaTurnResolution
   getActivePresetSnapshots?: (target: ModelRequestPresetSnapshotTarget) => StudioPresetRuntimeSnapshot[]
   onRecordAppended?: (record: StudioModelRequestRecord) => void
 }
@@ -158,9 +162,15 @@ export function installModelRequestCollector(options: InstallModelRequestCollect
       return original.call(this, info, init, proxy)
     }
 
+    const resolution = options.resolveTurn()
+    // 虚拟机器人（模拟环境类插件注册的 hidden OneBot 机器人）触发的请求不进记录库：本插件的记录
+    // 库只收真实会话的证据。这一步必须早于 store.append——记录一旦写进去，列表、筛选可选值聚合、
+    // 轨迹与预设证据定位都会把它当成真实请求，而记录上没有任何字段能事后把它认出来。
+    if (resolution.virtualOnly) return original.call(this, info, init, proxy)
+
     const body = parseJsonBody(request.body)
     const store = options.store
-    const turn = options.resolveTurn()
+    const turn = resolution.turn
     const startedAt = Date.now()
     const configuredHeaders = readRequestHeaders(info, init)
     const presetSnapshots = turn?.entities.botId && turn.entities.conversationId

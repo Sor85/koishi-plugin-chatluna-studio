@@ -11,12 +11,36 @@ import type { StudioConversationType, StudioModelRequestEntities } from '../type
  *
  * 跟踪器只在「当前恰好只有一轮对话在跑」时给出归属。群聊高峰期多轮并发时宁可记成未归属，
  * 也不把请求挂到错误的会话上——错误的归属会让预设证据定位、轨迹聚合与会话筛选同时说谎。
+ *
+ * 虚拟机器人触发的对话轮是第三种结果：既不归属，也不该被记下来。模拟环境类插件（AI 测试空间、
+ * 开发者观察窗）会注册 hidden 的 OneBot 机器人并派发真实 Koishi session，ChatLuna 照常发出
+ * 生命周期事件，于是它们的模型请求和真实会话在 fetch 边界上完全一样。跟踪器因此额外报告
+ * 「在跑的对话轮是否全是虚拟的」，让采集器整条丢弃（ADR-0023）。
  */
 
 /** 一轮对话：会话实体 + 这一轮的交互标识，同一轮里的多次模型请求共享后者。 */
 export interface ChatLunaTurn {
   entities: StudioModelRequestEntities
   interactionId: string
+}
+
+/**
+ * 「现在是谁在请求模型」的完整回答。
+ *
+ * 归属与「要不要记」是两件独立的事：判不出归属的请求照样要记成未归属，而确定由虚拟机器人触发的
+ * 请求根本不进记录库。两者由同一次解析一起给出，调用方因此不必分两次读同一份状态——那两次读之间
+ * 状态可能已经变了。
+ */
+export interface ChatLunaTurnResolution {
+  /** 归属到的对话轮；判不出来时缺省。 */
+  turn?: ChatLunaTurn
+  /** 当前在跑的对话轮非空、且全部来自虚拟机器人。 */
+  virtualOnly: boolean
+}
+
+/** 跟踪器内部的对话轮：多带一个「这轮来自虚拟机器人」的判定，不对外暴露。 */
+interface TrackedChatLunaTurn extends ChatLunaTurn {
+  virtual: boolean
 }
 
 interface ChatLunaSessionEventRegistrar {
@@ -110,6 +134,20 @@ export function readStudioSessionEntities(session: unknown): StudioModelRequestE
   }
 }
 
+/**
+ * 这轮对话是虚拟 OneBot 机器人发起的。
+ *
+ * 模拟环境类插件注册的机器人一律是同一个形状：`platform` 为 `onebot`、`hidden` 为真，OneBot
+ * action 通道由注册它的插件在自己的场景里实现。认这个通用形状而不是某个具体插件的包名或 selfId：
+ * 包名会随插件更换静默失效，selfId 则是用户可改的配置。
+ *
+ * 真实适配器不会把 `hidden` 置真——控制台需要在机器人列表里显示它们，因此这个判据不会误伤真实会话。
+ */
+export function isVirtualOneBotSession(session: unknown): boolean {
+  if (readNested(session, ['bot', 'hidden']) !== true) return false
+  return readFirstString(session, [['bot', 'platform'], ['platform']]) === 'onebot'
+}
+
 export interface ChatLunaSessionTrackerOptions {
   /**
    * 一轮对话在上游报错时的回调。
@@ -123,7 +161,7 @@ export interface ChatLunaSessionTrackerOptions {
 
 export class ChatLunaSessionTracker {
   /** 正在进行的对话轮，按（机器人，会话）索引；同一会话重复开始时以后一次为准。 */
-  private readonly turns = new Map<string, ChatLunaTurn>()
+  private readonly turns = new Map<string, TrackedChatLunaTurn>()
   /**
    * ChatLuna 内部会话标识到本地键的映射。
    *
@@ -147,7 +185,8 @@ export class ChatLunaSessionTracker {
     }))
     this.disposers.push(on('chatluna/after-chat-error', (error, conversationId) => {
       const turn = this.resolveCoreTurn(conversationId)
-      if (turn) this.options.onTurnFailed?.(error, turn)
+      // 虚拟机器人的模型请求从未进过记录库，回填错误只会白扫一遍记录库；这里直接不发。
+      if (turn && !turn.virtual) this.options.onTurnFailed?.(error, turn)
       this.finishCore(conversationId)
     }))
     this.disposers.push(on('chatluna_character/before-chat', (payload) => {
@@ -159,7 +198,7 @@ export class ChatLunaSessionTracker {
   }
 
   /** 内部会话标识唯一对应一轮时才认；映射到多轮时这次错误归属不明。 */
-  private resolveCoreTurn(conversationId: string): ChatLunaTurn | undefined {
+  private resolveCoreTurn(conversationId: string): TrackedChatLunaTurn | undefined {
     const keys = this.coreKeys.get(conversationId)
     if (keys?.size !== 1) return
     const [key] = keys
@@ -167,15 +206,24 @@ export class ChatLunaSessionTracker {
   }
 
   /**
-   * 归属候选。恰好一轮时才交出它：多轮并发或没有任何一轮在跑时，这次模型请求归属不明。
+   * 归属候选，外加「这次请求是否确定来自虚拟机器人」。
    *
-   * 判定留在这里而不是采集器里：采集器只知道「拿到候选就写归属」，而「几轮算可判定」是会话
-   * 跟踪自己的规则，两个模块因此不必共享一份并发假设。
+   * 归属恰好一轮时才交出：多轮并发或没有任何一轮在跑时，这次模型请求归属不明。
+   *
+   * `virtualOnly` 只在「在跑的对话轮非空且全部虚拟」时为真。虚拟轮与真实轮并发时它为假：fetch
+   * 边界分不出这次请求是哪一边发的，把整对都丢掉会连真实会话的证据一起丢，只能记成未归属留给
+   * 人工按时间对照。反过来两轮都虚拟时不能只看「恰好一轮」，否则模拟环境里跑多轮就又漏进来了。
+   *
+   * 判定留在这里而不是采集器里：采集器只知道「拿到候选就写归属」，而「几轮算可判定」「哪种机器人
+   * 不该记」都是会话跟踪自己的规则，两个模块因此不必共享一份并发假设。
    */
-  resolveActiveTurn(): ChatLunaTurn | undefined {
-    if (this.turns.size !== 1) return
-    const [turn] = this.turns.values()
-    return turn ? { entities: { ...turn.entities }, interactionId: turn.interactionId } : undefined
+  resolveActiveTurn(): ChatLunaTurnResolution {
+    const active = [...this.turns.values()]
+    const virtualOnly = active.length > 0 && active.every(({ virtual }) => virtual)
+    if (active.length !== 1) return { virtualOnly }
+    const [turn] = active
+    if (!turn || turn.virtual) return { virtualOnly }
+    return { virtualOnly, turn: { entities: { ...turn.entities }, interactionId: turn.interactionId } }
   }
 
   /** 当前正在进行的对话轮数；诊断与测试用。 */
@@ -196,7 +244,11 @@ export class ChatLunaSessionTracker {
     // chatluna-character 与核心链路可能为同一轮各报一次；后一次只刷新实体，不换交互标识，
     // 否则同一轮的模型请求会被拆进两个交互里。
     const existing = this.turns.get(key)
-    this.turns.set(key, { entities, interactionId: existing?.interactionId ?? Random.id() })
+    this.turns.set(key, {
+      entities,
+      interactionId: existing?.interactionId ?? Random.id(),
+      virtual: isVirtualOneBotSession(session),
+    })
     return key
   }
 

@@ -79,7 +79,7 @@ describe('模型请求采集器', () => {
     const dispose = installModelRequestCollector({
       plugin,
       store,
-      resolveTurn: () => groupTurn,
+      resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }),
     })
 
     await plugin.prototype.fetch(CHAT_URL, {
@@ -101,7 +101,7 @@ describe('模型请求采集器', () => {
   it('判不出归属时记成未归属，实体留空而不是猜一个', async () => {
     const store = createStore()
     const { plugin } = createPlugin(async () => jsonResponse({ ok: true }))
-    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => undefined })
+    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => ({ virtualOnly: false }) })
 
     await plugin.prototype.fetch(CHAT_URL, { method: 'POST', body: '{"model":"gpt-4.1"}' })
     await store.waitForPersistence()
@@ -113,10 +113,36 @@ describe('模型请求采集器', () => {
     dispose()
   })
 
+  it('确定来自虚拟机器人时整条不记，请求本身照常发出', async () => {
+    const store = createStore()
+    const { plugin, original } = createPlugin(async () => jsonResponse({ choices: [{ message: { content: '在' } }] }))
+    const onRecordAppended = vi.fn()
+    const dispose = installModelRequestCollector({
+      plugin,
+      store,
+      resolveTurn: () => ({ virtualOnly: true }),
+      onRecordAppended,
+    })
+
+    const response = await plugin.prototype.fetch(CHAT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'gpt-4.1', messages: [{ role: 'user', content: '在吗' }] }),
+    })
+    await store.waitForPersistence()
+
+    // 记录库一条也不能有：写进去之后没有任何字段能事后把模拟请求认出来。
+    expect((await store.getRecords({})).records).toHaveLength(0)
+    expect(onRecordAppended).not.toHaveBeenCalled()
+    // 采集是旁路，丢记录不等于丢请求；原 fetch 必须照常调用并把响应原样交回 ChatLuna。
+    expect(original).toHaveBeenCalledTimes(1)
+    expect(response).toBeDefined()
+    dispose()
+  })
+
   it('非对话请求原样透传，不产生记录', async () => {
     const store = createStore()
     const { plugin, original } = createPlugin(async () => jsonResponse({ data: [] }))
-    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => groupTurn })
+    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }) })
 
     await plugin.prototype.fetch('https://api.openai.com/v1/embeddings', { method: 'POST', body: '{}' })
     await plugin.prototype.fetch(CHAT_URL, { method: 'GET' })
@@ -130,7 +156,7 @@ describe('模型请求采集器', () => {
   it('保存响应原文，HTTP 失败记成错误状态', async () => {
     const store = createStore()
     const { plugin } = createPlugin(async () => jsonResponse({ error: { message: '超出配额' } }, 429))
-    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => groupTurn })
+    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }) })
 
     await plugin.prototype.fetch(CHAT_URL, { method: 'POST', body: '{"model":"gpt-4.1"}' })
     await store.waitForPersistence()
@@ -149,7 +175,7 @@ describe('模型请求采集器', () => {
     const store = createStore()
     const failure = new Error('connect ECONNRESET')
     const { plugin } = createPlugin(async () => { throw failure })
-    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => groupTurn })
+    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }) })
 
     await expect(plugin.prototype.fetch(CHAT_URL, { method: 'POST', body: '{}' })).rejects.toBe(failure)
     await store.waitForPersistence()
@@ -175,7 +201,7 @@ describe('模型请求采集器', () => {
     const dispose = installModelRequestCollector({
       plugin,
       store,
-      resolveTurn: () => groupTurn,
+      resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }),
       getActivePresetSnapshots,
       onRecordAppended,
     })
@@ -199,7 +225,7 @@ describe('模型请求采集器', () => {
     const dispose = installModelRequestCollector({
       plugin,
       store,
-      resolveTurn: () => undefined,
+      resolveTurn: () => ({ virtualOnly: false }),
       getActivePresetSnapshots,
     })
 
@@ -213,7 +239,7 @@ describe('模型请求采集器', () => {
   it('卸载后恢复原始 fetch', async () => {
     const store = createStore()
     const { plugin, original } = createPlugin(async () => jsonResponse({ ok: true }))
-    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => groupTurn })
+    const dispose = installModelRequestCollector({ plugin, store, resolveTurn: () => ({ virtualOnly: false, turn: groupTurn }) })
     expect(plugin.prototype.fetch).not.toBe(original)
     dispose()
     expect(plugin.prototype.fetch).toBe(original)
