@@ -117,7 +117,7 @@ describe('工作室悬浮导航栏', () => {
     expect(rule('.chatluna-studio-sidebar-item:focus-visible')).toContain('outline-offset: -2px')
   })
 
-  it('阴影是轻微抬起，且亮暗两套成对', () => {
+  it('阴影是轻微抬起，底色是实心的工作区背景色，且亮暗两套成对', () => {
     // secondary-shadow 是给 Portal 浮层用的重投影，落在这张小卡片上会比周围只有 1px 边框的面板
     // 重一个量级；暗色那一份也不能漏，rgb(15 23 42) 在暗底上几乎看不出来，卡片会失去边界。
     const rail = rule('.chatluna-studio-sidebar-rail')
@@ -125,6 +125,11 @@ describe('工作室悬浮导航栏', () => {
     expect(rail).toMatch(/box-shadow: 0 4px 12px rgb\(15 23 42 \/ \d+%\)/)
     expect(rule('.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-sidebar-rail'))
       .toMatch(/box-shadow: 0 4px 12px rgb\(9 9 11 \/ \d+%\)/)
+
+    // 底色必须实心：卡片展开时盖在滚动内容之上，而工作区层禁止 backdrop-filter（ADR-0019），
+    // 一旦换成半透明就没有模糊兜底，底下的列表文字会直接透过图标。
+    expect(rail).toContain('background: var(--chatluna-studio-bg)')
+    expect(rail).not.toMatch(/background:[^;]*(?:color-mix|transparent|rgb\([^)]*\/)/)
   })
 
   it('页面结构：卡片本身就是 nav，只有两个视图入口，标签常驻 DOM', () => {

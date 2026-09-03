@@ -63,13 +63,17 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
      导航列宽只算「卡片 + 一份外侧留白」：卡片靠 right 定位，这份留白落在卡片右边（到浏览器
      边缘），卡片左边缘正好压在内容列的边界上，左侧那段距离由内容区自己的 padding 提供。
      两段留白因此都等于 --chatluna-studio-region-padding，卡片在内容卡片与窗口边缘之间居中。
-     写成 `+ inset * 2` 会让左边多出一份留白，卡片看着偏右贴边。 */
+     写成 `+ inset * 2` 会让左边多出一份留白，卡片看着偏右贴边。
+
+     --chatluna-studio-sidebar-rail-open 是这套几何里唯一手挑的数：它减去折叠宽度与行内间距之后
+     就是标签列宽（见 .chatluna-studio-sidebar-label），144px 留出 70px，正好装得下 5 个 14px
+     汉字。加入更长的页面名时要一并调大，否则标签会被省略号截断。 */
   --chatluna-studio-sidebar-icon: 44px;
   --chatluna-studio-sidebar-pad: 8px;
   --chatluna-studio-sidebar-inset: var(--chatluna-studio-region-padding);
   --chatluna-studio-sidebar-gap: 12px;
   --chatluna-studio-sidebar-rail: calc(var(--chatluna-studio-sidebar-icon) + var(--chatluna-studio-sidebar-pad) * 2 + 2px);
-  --chatluna-studio-sidebar-rail-open: 224px;
+  --chatluna-studio-sidebar-rail-open: 144px;
   --chatluna-studio-sidebar-column: calc(var(--chatluna-studio-sidebar-rail) + var(--chatluna-studio-sidebar-inset));
 
   display: grid;
@@ -104,7 +108,8 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
    靠 `right` 定位而不是 `left`：右边缘固定，宽度增长自然向左展开，图标那一列不会跟着平移。
    阴影自己写一份而不取 --chatluna-studio-secondary-shadow：那一份是给 Portal 浮层用的重投影，
    落在这张小卡片上会比周围只有 1px 边框的面板重出一个量级。
-   雾化外观下这里仍用实心面板色：工作区层禁止声明 backdrop-filter（详见 docs/adr/0019），
+   底色取工作区背景色而不是面板色：面板色在亮色下是纯白，会比周围所有面板都亮一档。
+   雾化外观下也保持这份实心底色：工作区层禁止声明 backdrop-filter（详见 docs/adr/0019），
    只做半透明而没有模糊会让底下的列表文字直接透过图标。 */
 .chatluna-studio-sidebar-rail {
   position: absolute;
@@ -120,7 +125,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   overflow: hidden;
   border: 1px solid var(--chatluna-studio-border);
   border-radius: 16px;
-  background: var(--chatluna-studio-panel);
+  background: var(--chatluna-studio-bg);
   box-shadow: 0 4px 12px rgb(15 23 42 / 8%);
   transition: width 0.18s ease;
 }
