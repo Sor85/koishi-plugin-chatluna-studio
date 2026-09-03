@@ -1,5 +1,5 @@
 <template>
-  <!-- 控制台侧边栏入口图标：Tabler flask-2（工作室里做实验），k-icon 类交由控制台样式接管尺寸与颜色。 -->
+  <!-- 控制台侧边栏入口图标：Tabler sparkles，k-icon 类交由控制台样式接管尺寸与颜色。 -->
   <svg
     class="k-icon"
     viewBox="0 0 24 24"
@@ -10,8 +10,8 @@
     stroke-linejoin="round"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M6.1 15h11.8" />
-    <path d="M14 3v7.342a6 6 0 0 1 1.318 10.658h-6.635a6 6 0 0 1 1.317 -10.66v-7.34h4z" />
-    <path d="M9 3h6" />
+    <path d="M9 18a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
+    <path d="M16 6a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2z" />
+    <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2z" />
   </svg>
 </template>

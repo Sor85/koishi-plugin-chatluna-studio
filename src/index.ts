@@ -71,7 +71,7 @@ export const Config: Schema<Config> = Schema.object({
   enableStudioFrostedGlass: Schema.boolean().default(true).description('启用浮层毛玻璃效果'),
   studioUseQQAvatars: Schema.boolean().default(true)
     .description('从 QQ 头像 CDN 加载机器人与会话头像。关闭后只显示首字母色块，浏览器不会向`q.qlogo.cn`发起请求'),
-}).description('ChatLuna 工作室')
+}).description('ChatLuna Studio')
 
 declare module 'koishi' {
   interface Events {

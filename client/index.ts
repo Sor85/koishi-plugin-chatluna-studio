@@ -10,7 +10,7 @@ icons.register('activity:chatluna-studio', StudioActivityIcon)
 export default (ctx: Context) => {
   installContextModelRequestReceiver(ctx)
   ctx.page({
-    name: 'ChatLuna 工作室',
+    name: 'ChatLuna Studio',
     path: '/chatluna-studio',
     icon: 'activity:chatluna-studio',
     order: 300,
