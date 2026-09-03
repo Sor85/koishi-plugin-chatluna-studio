@@ -173,6 +173,9 @@ describe('Studio 模型请求工作台', () => {
     expect(trajectorySource).not.toContain('Ctrl + 滚轮')
     expect(trajectorySource).not.toContain("'is-expanded': compositionZoom > COMPOSITION_ZOOM_MIN")
     expect(trajectorySource).toContain("'is-variable': segment.variableId")
+    // 一条消息被变量切开后会产出多段同 evidenceId 的分段，渲染键必须自带序号，否则同一轨道内撞键。
+    expect(trajectorySource).toContain('id: `${index}:${item.evidenceId}`')
+    expect(trajectorySource).toContain('id: `${slot.id}:${index}:${item.evidenceId}`')
     // 变量分段的标题标签同样来自证据种类 module，不在视图里硬编码一份。
     expect(trajectorySource).toContain("`${evidenceTitleLabel('variable')} · ${segment.variableName}`")
     expect(trajectorySource).toContain('当前会话没有可投影的请求组成')

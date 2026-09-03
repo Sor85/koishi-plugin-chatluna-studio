@@ -3,10 +3,10 @@ import { ref } from 'vue'
 /**
  * 请求组成图轨道的缩放与横向拖动。
  *
- * 三处判定原先内联在视图里，只能靠人在浏览器里拖着试：Ctrl 才接管滚轮（否则页面
+ * 四处判定原先内联在视图里，只能靠人在浏览器里拖着试：Ctrl 才接管滚轮（否则页面
  * 滚不动）、位移超过阈值才算拖动（否则单击变成 0 像素拖动）、拖完短时间内吃掉一次
- * click（否则松手就顺带选中了指针下的分段）。缩放还要做锚点补偿，让指针底下的内容
- * 保持不动，否则放大后视野会跳到轨道开头。
+ * click（否则松手就顺带选中了指针下的分段）、以及只有真的开始拖动才接住指针。
+ * 缩放还要做锚点补偿，让指针底下的内容保持不动，否则放大后视野会跳到轨道开头。
  */
 export const COMPOSITION_ZOOM_MIN = 1
 export const COMPOSITION_ZOOM_MAX = 10
@@ -81,11 +81,18 @@ export function createCompositionZoomPan(options: CompositionZoomPanOptions) {
     setZoom(zoom.value + (event.deltaY < 0 ? COMPOSITION_ZOOM_STEP : -COMPOSITION_ZOOM_STEP), event.clientX)
   }
 
+  /**
+   * 按下只记录起点，不接住指针。
+   *
+   * 指针捕获会把之后的 pointerup、mouseup 连同 click 一起改派到视图口：click 的目标是
+   * mousedown 与 mouseup 目标的最近公共祖先，一旦 mouseup 被改派，落在分段按钮上的那次
+   * click 就只会命中视图口，按钮自己的点击处理器永远收不到（Chromium 与 Firefox 同）。
+   * 因此捕获推迟到位移真的越过阈值时再取，见 handlePointerMove。
+   */
   function handlePointerDown(event: CompositionPointerInput) {
     const viewport = options.viewport()
     if (!viewport || (event.button !== undefined && event.button !== 0)) return
     drag = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: viewport.scrollLeft, moved: false }
-    viewport.setPointerCapture(event.pointerId)
   }
 
   function handlePointerMove(event: CompositionPointerInput) {
@@ -93,6 +100,8 @@ export function createCompositionZoomPan(options: CompositionZoomPanOptions) {
     if (!viewport || !drag || drag.pointerId !== event.pointerId) return
     const delta = event.clientX - drag.startX
     if (!drag.moved && Math.abs(delta) < COMPOSITION_DRAG_THRESHOLD_PX) return
+    // 越过阈值的那一拍才接住指针：此后指针移出视图口仍能继续拖动，而单击不再被改派。
+    if (!drag.moved) viewport.setPointerCapture(event.pointerId)
     drag.moved = true
     dragging.value = true
     event.preventDefault?.()

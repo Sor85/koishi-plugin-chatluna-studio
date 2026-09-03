@@ -149,35 +149,42 @@ describe('请求组成图滚轮与拖动', () => {
     expect(pan.zoom.value).toBe(COMPOSITION_ZOOM_MIN)
   })
 
-  it('位移不到阈值仍算单击：不进入拖动态、不滚动轨道', () => {
+  it('位移不到阈值仍算单击：不进入拖动态、不滚动轨道，也不接住指针', () => {
     const { pan, viewport } = harness()
     const fake = viewport as FakeViewport
     fake.scrollLeft = 50
 
     pan.handlePointerDown({ pointerId: 1, button: 0, clientX: 300 })
+    // 按下当拍就捕获指针会把 click 改派到视图口，分段按钮因此收不到自己的点击。
+    expect(fake.hasPointerCapture(1)).toBe(false)
+
     pan.handlePointerMove({ pointerId: 1, clientX: 300 + COMPOSITION_DRAG_THRESHOLD_PX - 1 })
 
     expect(pan.dragging.value).toBe(false)
+    expect(fake.hasPointerCapture(1)).toBe(false)
     expect(fake.scrollLeft).toBe(50)
 
     pan.finishDrag({ pointerId: 1, clientX: 302 })
     expect(pan.consumeSuppressedClick()).toBe(false)
   })
 
-  it('越过阈值后按位移反向滚动，并接住指针', () => {
+  it('越过阈值后按位移反向滚动，并在那一拍接住指针', () => {
     const { pan, viewport } = harness()
     const fake = viewport as FakeViewport
     fake.scrollLeft = 50
 
     pan.handlePointerDown({ pointerId: 1, button: 0, clientX: 300 })
-    expect(fake.hasPointerCapture(1)).toBe(true)
-
     pan.handlePointerMove({ pointerId: 1, clientX: 260 })
 
     expect(pan.dragging.value).toBe(true)
+    expect(fake.hasPointerCapture(1)).toBe(true)
     expect(fake.scrollLeft).toBe(90)
 
-    pan.finishDrag({ pointerId: 1, clientX: 260 })
+    // 接住之后指针移出视图口仍要继续拖动。
+    pan.handlePointerMove({ pointerId: 1, clientX: 100 })
+    expect(fake.scrollLeft).toBe(250)
+
+    pan.finishDrag({ pointerId: 1, clientX: 100 })
     expect(pan.dragging.value).toBe(false)
     expect(fake.hasPointerCapture(1)).toBe(false)
   })
