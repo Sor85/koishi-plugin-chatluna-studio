@@ -11,8 +11,10 @@ node_modules
 !.yarn/sdks/**
 !.yarn/versions
 !.yarn/versions/**
-lib
-dist
-data
+# 构建产物只在仓库根，必须锚定：不带斜杠的 lib/dist 会匹配任意层级的同名目录，
+# client/lib（shadcn-vue 的 cn helper）就是这样被整个吞掉、从未提交的。
+/lib
+/dist
+/data
 *.tsbuildinfo
 client/styles/tailwind.generated.css
