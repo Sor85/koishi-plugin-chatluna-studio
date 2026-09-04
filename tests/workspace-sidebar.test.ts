@@ -157,6 +157,24 @@ describe('工作室悬浮导航栏', () => {
     expect(page).not.toMatch(/chatluna-studio-sidebar-label"[^>]*v-(?:if|show)/)
   })
 
+  it('展开态收起 body 上的滚动轨道，且不把 :has() 套进 :has()', () => {
+    // 轨道挂在 body 上、z-index 必须压过控制台的 .layout-container（z-index: 100），DOM 顺序又在
+    // 其后，因此永远画在卡片之上：工作区内部调 z-index 换不回来，只能在展开态收起轨道。
+    // 不收起时滑块在卡片上划出一道竖线，而且那 4px 仍接收指针，指针横穿卡片会让卡片失去 :hover。
+    const primitives = readFileSync(resolve('client/styles/chatluna-studio-primitives.css'), 'utf8')
+    for (const trigger of [
+      'body:has(.chatluna-studio-sidebar-rail:hover)',
+      'body:has(.chatluna-studio-sidebar-rail :focus-visible)',
+    ]) {
+      expect(primitives, `缺少 ${trigger} 那一路`).toContain(`${trigger} .chatluna-studio-scrollbar-overlay`)
+      expect(primitives, `缺少 ${trigger} 的滑块命中屏蔽`).toContain(`${trigger} .chatluna-studio-scrollbar-thumb`)
+    }
+    // 键盘那一路必须写成后代选择器：:has() 不允许嵌套，套进去整条选择器列表会被丢掉，规则静默失效。
+    for (const source of readClientStylesheets()) {
+      expect(source, ':has() 嵌套会让整条选择器列表失效').not.toMatch(/:has\([^()]*:has\(/)
+    }
+  })
+
   it('品牌行与持久化状态行连带样式、取词、图标导入一起摘干净', () => {
     // 只删模板不删取词与导入时，它们会变成没人用的死代码，构建不报错也不会有任何提示。
     for (const gone of [

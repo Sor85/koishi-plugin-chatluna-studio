@@ -83,6 +83,25 @@
   pointer-events: none;
 }
 
+/* 悬浮导航栏展开时向左盖住内容区右缘，正好压在轨道上。轨道挂在 body 上，z-index 必须压过
+   控制台的 .layout-container（position: fixed; z-index: 100）才看得见，DOM 顺序又排在它之后，
+   所以轨道永远画在插件页面之上——工作区内部把 z-index 调到多大都换不回来，只能在展开态收起
+   轨道。展开态下轨道整条被卡片盖住，收起不损失任何信息；不收起有两处症状：滑块在卡片上划出
+   一道竖线，而且那 4px 仍然接收指针，指针横穿卡片时落到滑块上、卡片当即失去 :hover 收起，
+   看着像卡片自己在抖。
+
+   键盘那一路写成后代选择器而不是 `.chatluna-studio-sidebar-rail:has(:focus-visible)`：
+   :has() 不允许再嵌套 :has()，一旦嵌套整个选择器列表会被解析器整条丢掉，规则静默失效。 */
+body:has(.chatluna-studio-sidebar-rail:hover) .chatluna-studio-scrollbar-overlay,
+body:has(.chatluna-studio-sidebar-rail :focus-visible) .chatluna-studio-scrollbar-overlay {
+  opacity: 0;
+}
+
+body:has(.chatluna-studio-sidebar-rail:hover) .chatluna-studio-scrollbar-thumb,
+body:has(.chatluna-studio-sidebar-rail :focus-visible) .chatluna-studio-scrollbar-thumb {
+  pointer-events: none;
+}
+
 .chatluna-studio-scrollbar-overlay.is-accent .chatluna-studio-scrollbar-thumb {
   background: color-mix(in srgb, var(--chatluna-studio-accent) 78%, #60a5fa 22%);
 }
