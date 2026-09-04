@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -162,9 +162,17 @@ describe('文件系统预设仓库', () => {
       confirmed: true,
     })
     await atCommit
-    await rm(join(coreRoot, 'demo.yml'))
-    await writeFile(join(coreRoot, 'replacement.yml'), source)
-    await rename(join(coreRoot, 'replacement.yml'), join(coreRoot, 'demo.yml'))
+    // 替身必须在原文件还占着自己的 inode 时创建。反过来先 rm 再新建的话，Linux 的 ext4/tmpfs
+    // 会把刚释放的 inode 号立刻分配给替身：identity 检查读到同一个 (dev, ino)，内容相同所以
+    // revision 也一样，删除会照常提交，用例便退化成断言一个不存在的替换。macOS 的 APFS 不复用
+    // inode 号，因此这个顺序问题只在 Linux 上暴露。rename 覆盖已存在的路径本身是原子的，不需要
+    // 先删原文件。
+    const replacementPath = join(coreRoot, 'replacement.yml')
+    await writeFile(replacementPath, source)
+    const originalInode = (await lstat(join(coreRoot, 'demo.yml'), { bigint: true })).ino
+    const replacementInode = (await lstat(replacementPath, { bigint: true })).ino
+    expect(replacementInode).not.toBe(originalInode)
+    await rename(replacementPath, join(coreRoot, 'demo.yml'))
     releaseCommit()
 
     await expect(deleting).rejects.toEqual(expectRepositoryError('unsafe-file'))
