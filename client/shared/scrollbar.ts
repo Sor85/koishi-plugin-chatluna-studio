@@ -1,4 +1,4 @@
-import type { Directive, DirectiveBinding } from 'vue'
+import type { Directive } from 'vue'
 import { computeVisibleScrollbarRect } from './scrollbar-track-bounds'
 import {
   applyScrollbarCue,
@@ -37,7 +37,7 @@ interface StudioScrollbarState {
 
 const states = new WeakMap<HTMLElement, StudioScrollbarState>()
 
-interface StudioScrollbarOptions {
+export interface StudioScrollbarOptions {
   disabled?: boolean
   hideOnNarrow?: boolean
   showOverlay?: boolean
@@ -166,119 +166,148 @@ function createOverlay() {
 
 function applyScrollbarOptions(
   state: StudioScrollbarState,
-  binding: DirectiveBinding<StudioScrollbarOptions | undefined>,
+  options: StudioScrollbarOptions | undefined,
 ) {
   const { overlay } = state
-  state.showOverlay = binding.value?.showOverlay !== false
-  overlay.classList.toggle('is-hidden-on-narrow', Boolean(binding.value?.hideOnNarrow))
-  overlay.classList.toggle('is-accent', binding.value?.tone === 'accent')
-  overlay.style.zIndex = String(binding.value?.zIndex ?? 100)
+  state.showOverlay = options?.showOverlay !== false
+  overlay.classList.toggle('is-hidden-on-narrow', Boolean(options?.hideOnNarrow))
+  overlay.classList.toggle('is-accent', options?.tone === 'accent')
+  overlay.style.zIndex = String(options?.zIndex ?? 100)
   // 二级页面保留滚动能力，但设计规范要求隐藏挂载到 body 的自定义轨道。showOverlay 是写 DOM 时
   // 的门而不是显隐判定的一部分，因此只重写类名：这里的时机是组件重渲染，推后收起时刻会让轨道
   // 在消息流不断刷新的会话里一直赖着。
   writeScrollbarClasses(state)
 }
 
+function attach(element: HTMLElement, options: StudioScrollbarOptions | undefined) {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || options?.disabled) return
+
+  const { overlay, thumb } = createOverlay()
+  const state: StudioScrollbarState = {
+    element,
+    overlay,
+    thumb,
+    showOverlay: options?.showOverlay !== false,
+    frame: 0,
+    hideTimer: 0,
+    visibility: createScrollbarVisibility(),
+    dragStartY: 0,
+    dragStartScrollTop: 0,
+    trackHeight: 0,
+    thumbHeight: 0,
+    cleanup: [],
+  }
+
+  states.set(element, state)
+  element.dataset.chatlunaStudioScrollbar = 'true'
+  applyScrollbarOptions(state, options)
+
+  const enter = () => cue(state, 'pointer-enter-area')
+  const leave = () => cue(state, 'pointer-leave-area')
+  const move = () => cue(state, 'pointer-move-area')
+  const focusIn = () => cue(state, 'focus-in')
+  const focusOut = () => cue(state, 'focus-out')
+  const scroll = () => cue(state, 'scroll')
+  const update = () => scheduleUpdate(state)
+  const pointerDown = (event: Event) => {
+    if (!(event instanceof PointerEvent)) return
+    event.preventDefault()
+    event.stopPropagation()
+    state.dragStartY = event.clientY
+    state.dragStartScrollTop = element.scrollTop
+    thumb.classList.add('is-dragging')
+    cue(state, 'drag-start')
+  }
+  const pointerMove = (event: Event) => {
+    if (!state.visibility.dragging) return
+    if (!(event instanceof PointerEvent)) return
+    event.preventDefault()
+    updateDraggedScrollTop(state, event.clientY)
+    scheduleUpdate(state)
+  }
+  const pointerUp = () => {
+    if (!state.visibility.dragging) return
+    stopDragging(state)
+  }
+  const thumbEnter = () => cue(state, 'pointer-enter-thumb')
+  const thumbLeave = () => cue(state, 'pointer-leave-thumb')
+
+  state.cleanup.push(
+    addListener(element, 'mouseenter', enter),
+    addListener(element, 'mouseleave', leave),
+    addListener(element, 'mousemove', move, { passive: true }),
+    addListener(element, 'focusin', focusIn),
+    addListener(element, 'focusout', focusOut),
+    addListener(element, 'scroll', scroll, { passive: true }),
+    addListener(window, 'resize', update),
+    addListener(window, 'scroll', update, { capture: true, passive: true }),
+    addListener(thumb, 'pointerdown', pointerDown),
+    addListener(thumb, 'click', stopEvent),
+    addListener(thumb, 'mouseenter', thumbEnter),
+    addListener(thumb, 'mouseleave', thumbLeave),
+    addListener(document, 'pointermove', pointerMove),
+    addListener(document, 'pointerup', pointerUp),
+    addListener(document, 'pointercancel', pointerUp),
+  )
+
+  if (typeof ResizeObserver !== 'undefined') {
+    state.resizeObserver = new ResizeObserver(update)
+    state.resizeObserver.observe(element)
+  }
+
+  if (typeof MutationObserver !== 'undefined') {
+    state.mutationObserver = new MutationObserver(update)
+    state.mutationObserver.observe(element, { childList: true, subtree: true, characterData: true })
+  }
+
+  scheduleUpdate(state)
+}
+
+function refresh(element: HTMLElement, options: StudioScrollbarOptions | undefined) {
+  const state = states.get(element)
+  if (!state) return
+  applyScrollbarOptions(state, options)
+  scheduleUpdate(state)
+}
+
+function detach(element: HTMLElement) {
+  const state = states.get(element)
+  if (!state) return
+  states.delete(element)
+  delete element.dataset.chatlunaStudioScrollbar
+  clearHideTimer(state)
+  if (state.frame) window.cancelAnimationFrame(state.frame)
+  state.resizeObserver?.disconnect()
+  state.mutationObserver?.disconnect()
+  for (const cleanup of state.cleanup) cleanup()
+  state.overlay.remove()
+}
+
+export interface StudioScrollbarHandle {
+  update(options?: StudioScrollbarOptions): void
+  detach(): void
+}
+
+/**
+ * 命令式挂载，供拿不到滚动容器引用的宿主使用。
+ *
+ * CodeMirror 的 `.cm-scroller` 由编辑器自己创建，模板里没有对应节点，指令无处可挂。而这种滚动
+ * 容器同样不能留原生滚动条：原生轨道固定从滚动容器顶缘起画，无法裁剪，滚动容器一旦为了让毛玻璃
+ * 表头有内容可采样而延伸到表头背后（ADR-0024），轨道就会跟着钻进顶栏。
+ */
+export function attachStudioScrollbar(
+  element: HTMLElement,
+  options?: StudioScrollbarOptions,
+): StudioScrollbarHandle {
+  attach(element, options)
+  return {
+    update: (next) => refresh(element, next),
+    detach: () => detach(element),
+  }
+}
+
 export const vChatlunaStudioScrollbar: Directive<HTMLElement, StudioScrollbarOptions | undefined> = {
-  mounted(element, binding) {
-    if (typeof window === 'undefined' || typeof document === 'undefined' || binding.value?.disabled) return
-
-    const { overlay, thumb } = createOverlay()
-    const state: StudioScrollbarState = {
-      element,
-      overlay,
-      thumb,
-      showOverlay: binding.value?.showOverlay !== false,
-      frame: 0,
-      hideTimer: 0,
-      visibility: createScrollbarVisibility(),
-      dragStartY: 0,
-      dragStartScrollTop: 0,
-      trackHeight: 0,
-      thumbHeight: 0,
-      cleanup: [],
-    }
-
-    states.set(element, state)
-    element.dataset.chatlunaStudioScrollbar = 'true'
-    applyScrollbarOptions(state, binding)
-
-    const enter = () => cue(state, 'pointer-enter-area')
-    const leave = () => cue(state, 'pointer-leave-area')
-    const move = () => cue(state, 'pointer-move-area')
-    const focusIn = () => cue(state, 'focus-in')
-    const focusOut = () => cue(state, 'focus-out')
-    const scroll = () => cue(state, 'scroll')
-    const update = () => scheduleUpdate(state)
-    const pointerDown = (event: Event) => {
-      if (!(event instanceof PointerEvent)) return
-      event.preventDefault()
-      event.stopPropagation()
-      state.dragStartY = event.clientY
-      state.dragStartScrollTop = element.scrollTop
-      thumb.classList.add('is-dragging')
-      cue(state, 'drag-start')
-    }
-    const pointerMove = (event: Event) => {
-      if (!state.visibility.dragging) return
-      if (!(event instanceof PointerEvent)) return
-      event.preventDefault()
-      updateDraggedScrollTop(state, event.clientY)
-      scheduleUpdate(state)
-    }
-    const pointerUp = () => {
-      if (!state.visibility.dragging) return
-      stopDragging(state)
-    }
-    const thumbEnter = () => cue(state, 'pointer-enter-thumb')
-    const thumbLeave = () => cue(state, 'pointer-leave-thumb')
-
-    state.cleanup.push(
-      addListener(element, 'mouseenter', enter),
-      addListener(element, 'mouseleave', leave),
-      addListener(element, 'mousemove', move, { passive: true }),
-      addListener(element, 'focusin', focusIn),
-      addListener(element, 'focusout', focusOut),
-      addListener(element, 'scroll', scroll, { passive: true }),
-      addListener(window, 'resize', update),
-      addListener(window, 'scroll', update, { capture: true, passive: true }),
-      addListener(thumb, 'pointerdown', pointerDown),
-      addListener(thumb, 'click', stopEvent),
-      addListener(thumb, 'mouseenter', thumbEnter),
-      addListener(thumb, 'mouseleave', thumbLeave),
-      addListener(document, 'pointermove', pointerMove),
-      addListener(document, 'pointerup', pointerUp),
-      addListener(document, 'pointercancel', pointerUp),
-    )
-
-    if (typeof ResizeObserver !== 'undefined') {
-      state.resizeObserver = new ResizeObserver(update)
-      state.resizeObserver.observe(element)
-    }
-
-    if (typeof MutationObserver !== 'undefined') {
-      state.mutationObserver = new MutationObserver(update)
-      state.mutationObserver.observe(element, { childList: true, subtree: true, characterData: true })
-    }
-
-    scheduleUpdate(state)
-  },
-  updated(element, binding) {
-    const state = states.get(element)
-    if (!state) return
-    applyScrollbarOptions(state, binding)
-    scheduleUpdate(state)
-  },
-  unmounted(element) {
-    const state = states.get(element)
-    if (!state) return
-    states.delete(element)
-    delete element.dataset.chatlunaStudioScrollbar
-    clearHideTimer(state)
-    if (state.frame) window.cancelAnimationFrame(state.frame)
-    state.resizeObserver?.disconnect()
-    state.mutationObserver?.disconnect()
-    for (const cleanup of state.cleanup) cleanup()
-    state.overlay.remove()
-  },
+  mounted: (element, binding) => attach(element, binding.value),
+  updated: (element, binding) => refresh(element, binding.value),
+  unmounted: detach,
 }

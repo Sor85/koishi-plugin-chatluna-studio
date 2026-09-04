@@ -16,6 +16,8 @@ import { readClientStylesheets } from './helpers/client-stylesheets'
  * - body 状态位：dataset 键名与样式源里的属性选择器必须逐字对应，否则整块规则永不命中。
  * - 浮层配色令牌：Portal 到 body 的面板不在工作区继承树里，令牌镜像缺失时引用它们的声明会被
  *   整条丢弃，面板变成完全透明。
+ * - 第三方组件自建的滚动容器：模板里没有节点可挂指令，只能命令式挂载；漏掉挂载或漏掉卸载都不会
+ *   报错，只会留下原生轨道或一个孤儿轨道元素。
  */
 
 const CLIENT_ROOT = resolve(__dirname, '../client')
@@ -118,5 +120,19 @@ describe('客户端模板契约', () => {
       expect(mirror, `浮层令牌镜像缺 ${token}`).toContain(`${token}:`)
     }
     expect(mirror).toContain('body[data-chatluna-studio-color-scheme="dark"]')
+  })
+
+  it('CodeMirror 的滚动容器命令式挂上自定义轨道，并且不留原生轨道的位置', () => {
+    const editor = files.find(({ path }) => path === 'preset/source-editor.vue')!.source
+    // `.cm-scroller` 由 CodeMirror 自己创建，模板里没有这个节点，v- 指令无处可挂。漏掉这一句
+    // 不会报错，只会让原生轨道从滚动容器顶缘起画——而那个顶缘在覆盖层顶栏背后。
+    expect(editor).toContain('attachStudioScrollbar(view.scrollDOM)')
+    // 轨道元素挂在 body 上，销毁编辑器不会带走它。
+    expect(editor).toContain('scrollbar?.detach()')
+
+    // 原生轨道无法裁剪，滚动容器不得重新预留或恢复它的宽度。
+    const presetStyles = readFileSync(join(CLIENT_ROOT, 'preset/styles.css'), 'utf8')
+    const block = presetStyles.slice(presetStyles.indexOf('.chatluna-studio-preset-source-editor .cm-scroller'))
+    expect(block.slice(0, block.indexOf('}'))).not.toMatch(/scrollbar-gutter|scrollbar-width|::-webkit-scrollbar/)
   })
 })

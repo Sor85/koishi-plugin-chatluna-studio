@@ -12,6 +12,7 @@ import { IconExternalLink } from '@tabler/icons-vue'
 import { tags } from '@lezer/highlight'
 import { createApp, h, markRaw, onBeforeUnmount, onMounted, ref, toRaw, watch, type DeepReadonly } from 'vue'
 import { Button } from '#client/components/ui/button'
+import { attachStudioScrollbar, type StudioScrollbarHandle } from '#client/shared/scrollbar'
 import {
   codeMirrorOffset,
   resolvePresetSourceExpressions,
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 
 const editorElement = ref<HTMLElement>()
 let view: EditorView | undefined
+let scrollbar: StudioScrollbarHandle | undefined
 let activeExpressions: readonly PresetSourceEditorExpression[] = []
 
 const presetEditorTheme = EditorView.theme({
@@ -269,6 +271,10 @@ onMounted(() => {
     }),
     ...(scrollTo ? { scrollTo } : {}),
   })
+  // 滚动容器是 CodeMirror 自己建的，模板里没有这个节点，指令挂不上去，只能命令式挂载。它必须挂：
+  // 源码要延伸到毛玻璃顶栏背后才有内容可采样，而原生轨道从滚动容器顶缘起画且无法裁剪，会跟着钻
+  // 进顶栏；自定义轨道的顶缘由顶栏底缘顶下来。
+  scrollbar = attachStudioScrollbar(view.scrollDOM)
   dispatchDecorations()
   // 构造时高度还没量完，快照要等一帧再 dispatch，否则会按未测量行高滚回顶部。
   if (scrollTo) requestAnimationFrame(() => restoreScrollSnapshot(scrollTo))
@@ -307,5 +313,11 @@ watch(() => props.readOnly, (readOnly) => {
   dispatchDecorations()
 })
 
-onBeforeUnmount(() => view?.destroy())
+onBeforeUnmount(() => {
+  // 轨道挂在 body 上，先摘再销毁编辑器：view.destroy() 之后 scrollDOM 已经离开文档，
+  // 轨道元素会留在 body 里成为孤儿。
+  scrollbar?.detach()
+  scrollbar = undefined
+  view?.destroy()
+})
 </script>

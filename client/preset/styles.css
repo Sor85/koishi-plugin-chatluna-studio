@@ -260,13 +260,15 @@
   outline: none;
 }
 
+/* 轨道走 attachStudioScrollbar 挂的自定义实现，原生滚动条已由
+   `[data-chatluna-studio-scrollbar]` 隐藏，这里不得再预留或恢复原生轨道的宽度：原生轨道从滚动
+   容器顶缘起画，而这个容器要延伸到上方覆盖层背后，一恢复就会重新钻进顶栏。 */
 .chatluna-studio-preset-source-editor .cm-scroller {
   overflow: auto;
   padding-top: var(--chatluna-studio-preset-overlay-height, 57px);
   font-family: var(--chatluna-studio-font-mono);
   font-variant-ligatures: none;
   scroll-padding-top: var(--chatluna-studio-preset-overlay-height, 57px);
-  scrollbar-gutter: stable;
 }
 
 .chatluna-studio-preset-source-editor .cm-gutters {
