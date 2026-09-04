@@ -33,8 +33,6 @@ export const usage = `
 - 模型请求页面记录每次真实对话触发的模型调用：请求体、响应原文、用量、轨迹与预设变量展开。
 - 预设页面直接读写\`data/chathub/presets\`与\`data/chathub/character/presets\`下的 YAML 文件，保存后由 ChatLuna 自己热重载。
 - 点击预设里的表达式可以跳到它在真实模型请求中的展开位置，需要先有一次用到该预设的成功请求。
-
-模型请求的采集在 ChatLuna 的 fetch 边界完成，因此需要与 ChatLuna 装在同一个 Koishi 实例里。
 `
 
 /**
