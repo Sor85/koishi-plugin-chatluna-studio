@@ -109,8 +109,8 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
    阴影自己写一份而不取 --chatluna-studio-secondary-shadow：那一份是给 Portal 浮层用的重投影，
    落在这张小卡片上会比周围只有 1px 边框的面板重出一个量级。
    底色取工作区背景色而不是面板色：面板色在亮色下是纯白，会比周围所有面板都亮一档。
-   雾化外观下也保持这份实心底色：工作区层禁止声明 backdrop-filter（详见 docs/adr/0019），
-   只做半透明而没有模糊会让底下的列表文字直接透过图标。 */
+   实体外观下这份底色必须是实心的：只做半透明而没有模糊兜底时，底下的列表文字会直接透过图标。
+   雾化外观下换成半透明加模糊，规则在文件末尾。 */
 .chatluna-studio-sidebar-rail {
   position: absolute;
   inset-block: var(--chatluna-studio-sidebar-inset);
@@ -221,9 +221,10 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
   min-height: 0;
 }
 
-/* 工作区本体与一级区域禁止使用 backdrop-filter（详见 docs/adr/0060）：
+/* 工作区本体与一级区域禁止使用 backdrop-filter（详见 docs/adr/0019）：
    带 backdrop-filter 的元素会成为 Backdrop Root 边界，其内部后代与覆盖其上的浮层的
-   backdrop-filter 全部采样不到内容，浮层毛玻璃会静默退化成纯半透明。这里只保留半透明叠层。 */
+   backdrop-filter 全部采样不到内容，浮层毛玻璃会静默退化成纯半透明。这里只保留半透明叠层。
+   悬浮导航栏是卡片而不是一级区域，它的雾化做法见文件末尾。 */
 .chatluna-studio-workspace.is-frosted {
   background: rgb(244 246 248 / 78%);
 }
@@ -242,4 +243,36 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-page {
 
 .chatluna-studio-workspace.is-frosted[data-color-mode="dark"] .chatluna-studio-chat {
   background: rgb(44 44 48);
+}
+
+/* 雾化外观下悬浮导航栏跟着走毛玻璃：卡片贴在内容与窗口边缘之间，实心底色会比周围所有
+   半透明面板重一档，看着像一块贴上去的白板。四处约束缺一不可：
+
+   - 模糊只能落在无后代的 ::before 上。写在卡片本体时卡片自己成为 Backdrop Root，卡片内
+     日后出现任何带模糊的控件都会静默失效（同 docs/adr/0019 里 Popover 嵌套 Select 那种形态）。
+   - 卡片本体必须让出底色。实心 var(--chatluna-studio-bg) 会整片盖住 ::before 的模糊层，
+     不报错，只是看起来毛玻璃根本没生效。
+   - ::before 必须落在 z-index: -1。它是绝对定位盒，取默认层级会盖在两个图标之上，
+     图标与标签被一起吸进模糊层，看着像整张卡片糊掉了；卡片自身不是层叠上下文，
+     负层级会落到 .chatluna-studio-sidebar 这一层，仍在内容之上。
+   - `inset: 0` 相对卡片的内边距盒，边框那一圈不参与填充；卡片的 overflow: hidden 本来就
+     按内边距盒圆角裁切，`border-radius: inherit` 只是把意图写明。
+
+   实测（Chromium + Firefox，条纹背景上测卡片内亮度标准差）：两个引擎的模糊都生效，
+   且 fixed 浮层压在卡片上时自身模糊不退化——卡片折叠 62px、展开 144px，不构成 ADR-0019
+   里那种覆盖整片一级区域的 Backdrop Root 边界。 */
+.chatluna-studio-workspace.is-frosted .chatluna-studio-sidebar-rail {
+  border-color: var(--chatluna-studio-secondary-outline);
+  background: transparent;
+}
+
+.chatluna-studio-workspace.is-frosted .chatluna-studio-sidebar-rail::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--chatluna-studio-bg) 72%, transparent);
+  content: "";
+  pointer-events: none;
+  backdrop-filter: saturate(180%) blur(20px);
 }

@@ -275,7 +275,7 @@
 /* 毛玻璃外观（body[data-chatluna-studio-frosted] 由 useFrostedSurfaceFlag 写入）下，
    teleport 到 body 的叶子浮层切换为雾化态：半透明面板色 + 背景模糊。
    本条必须位于上方所有实体态背景规则之后，靠层叠顺序覆盖同特异性的实心背景；
-   工作区层已禁用 backdrop-filter（ADR 0060），浮层的模糊才能真正采样到内容。
+   工作区层的区域元素已禁用 backdrop-filter（ADR 0019），浮层的模糊才能真正采样到内容。
    Popover/Dialog 可能再嵌套 Select，不能把 backdrop-filter 写在容器上，否则
    容器成为 Backdrop Root，嵌套下拉的模糊会完全失效并退化成半透明中间态。 */
 body[data-chatluna-studio-frosted] .studio-select-content {
@@ -309,7 +309,7 @@ body[data-chatluna-studio-frosted] :is(
 }
 
 /* 雾化对话框改由面板自身模糊背景；遮罩若保留 backdrop-filter 会成为
-   Backdrop Root 边界，反而让面板的模糊采样不到工作区内容（详见 ADR 0060）。 */
+   Backdrop Root 边界，反而让面板的模糊采样不到工作区内容（详见 ADR 0019）。 */
 body[data-chatluna-studio-frosted] [data-slot="dialog-overlay"] {
   backdrop-filter: none;
 }

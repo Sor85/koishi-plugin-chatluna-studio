@@ -117,7 +117,7 @@ describe('工作室悬浮导航栏', () => {
     expect(rule('.chatluna-studio-sidebar-item:focus-visible')).toContain('outline-offset: -2px')
   })
 
-  it('阴影是轻微抬起，底色是实心的工作区背景色，且亮暗两套成对', () => {
+  it('阴影是轻微抬起，实体态底色实心、雾化态换成毛玻璃，且亮暗两套成对', () => {
     // secondary-shadow 是给 Portal 浮层用的重投影，落在这张小卡片上会比周围只有 1px 边框的面板
     // 重一个量级；暗色那一份也不能漏，rgb(15 23 42) 在暗底上几乎看不出来，卡片会失去边界。
     const rail = rule('.chatluna-studio-sidebar-rail')
@@ -126,10 +126,23 @@ describe('工作室悬浮导航栏', () => {
     expect(rule('.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-sidebar-rail'))
       .toMatch(/box-shadow: 0 4px 12px rgb\(9 9 11 \/ \d+%\)/)
 
-    // 底色必须实心：卡片展开时盖在滚动内容之上，而工作区层禁止 backdrop-filter（ADR-0019），
-    // 一旦换成半透明就没有模糊兜底，底下的列表文字会直接透过图标。
+    // 实体外观下底色必须实心：卡片展开时盖在滚动内容之上，半透明而没有模糊兜底时
+    // 底下的列表文字会直接透过图标。
     expect(rail).toContain('background: var(--chatluna-studio-bg)')
     expect(rail).not.toMatch(/background:[^;]*(?:color-mix|transparent|rgb\([^)]*\/)/)
+
+    // 雾化外观下改成半透明 + 模糊。模糊必须落在无后代的 ::before 上（写在卡片本体会让卡片
+    // 成为 Backdrop Root，卡片内控件的模糊全部失效，ADR-0019），卡片本体则必须让出实心底色，
+    // 否则那层实心背景整片盖住模糊层，看起来像毛玻璃没生效。
+    const frosted = rule('.chatluna-studio-workspace.is-frosted .chatluna-studio-sidebar-rail')
+    expect(frosted).toContain('background: transparent')
+    expect(frosted).not.toContain('backdrop-filter')
+    const frostedSurface = rule('.chatluna-studio-workspace.is-frosted .chatluna-studio-sidebar-rail::before')
+    expect(frostedSurface).toContain('backdrop-filter: saturate(180%) blur(20px)')
+    expect(frostedSurface).toContain('background: color-mix(in srgb, var(--chatluna-studio-bg) 72%, transparent)')
+    // 绝对定位的 ::before 取默认层级会盖在图标之上，把图标和标签一起吸进模糊层。
+    expect(frostedSurface).toContain('z-index: -1')
+    expect(frostedSurface).toContain('content: ""')
   })
 
   it('页面结构：卡片本身就是 nav，只有两个视图入口，标签常驻 DOM', () => {

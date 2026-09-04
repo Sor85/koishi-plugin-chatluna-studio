@@ -7,9 +7,9 @@ import { listClientStylesheets } from './helpers/client-stylesheets'
 /**
  * 客户端样式的加载结构。
  *
- * 三条不变量都属于「不会报错、只会静默变样」那一类：加载顺序就是级联顺序；工作区层一旦声明
- * backdrop-filter，覆盖在它上面的浮层毛玻璃会全部退化成纯半透明（ADR-0060）；入口文件一旦
- * 夹带规则，样式归属就不再看得出来。
+ * 三条不变量都属于「不会报错、只会静默变样」那一类：加载顺序就是级联顺序；工作区层一旦把
+ * backdrop-filter 写到区域元素自己身上，其中的控件与覆盖其上的浮层毛玻璃会全部退化成纯
+ * 半透明（ADR-0019）；入口文件一旦夹带规则，样式归属就不再看得出来。
  */
 
 const ENTRY = 'client/style.css'
@@ -48,10 +48,20 @@ describe('客户端样式加载', () => {
     expect(withoutComments).not.toMatch(/\{/)
   })
 
-  it('工作区层不声明 backdrop-filter，毛玻璃只出现在浮层与控件层', () => {
+  it('工作区层的模糊只落在无后代的 ::before 上，区域元素自身不声明 backdrop-filter', () => {
+    // 区域元素自己带 backdrop-filter 时会成为 Backdrop Root 边界：其中的控件与覆盖其上的
+    // 浮层都采样不到内容，毛玻璃静默退化成纯半透明（ADR-0019）。模糊挂在无后代的 ::before 上
+    // 时元素本身不成为边界，卡片这类小面积浮起表面才能安全雾化。
     const workspace = readFileSync(resolve('client/workspace/workspace.css'), 'utf8')
-    const declarations = [...workspace.matchAll(/^\s*backdrop-filter:/gm)]
-    expect(declarations, '工作区层出现 backdrop-filter 会让浮层毛玻璃整体失效').toEqual([])
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    const offenders: string[] = []
+    for (const match of workspace.matchAll(/(?<selector>[^{}]+)\{(?<body>[^{}]*)\}/g)) {
+      if (!/backdrop-filter:\s*(?!none)/.test(match.groups?.body ?? '')) continue
+      const selector = (match.groups?.selector ?? '').trim()
+      const onPseudo = selector.split(',').every((one) => one.trim().endsWith('::before'))
+      if (!onPseudo) offenders.push(selector)
+    }
+    expect(offenders, '工作区层的 backdrop-filter 必须写在 ::before 上，否则区域自身成为 Backdrop Root').toEqual([])
   })
 
   it('毛玻璃双态由 body 属性统一驱动，不给每个浮层穿 prop', () => {
