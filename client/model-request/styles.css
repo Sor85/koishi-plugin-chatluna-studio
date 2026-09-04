@@ -928,10 +928,19 @@
   margin-left: auto;
 }
 
+/* 宽度必须写成确定长度，不能用百分比：父级 .control-query 是 flex: 0 0 auto 的收缩到内容盒，
+   百分比要靠父宽求值、父宽又要靠子宽求值。Chromium 把这种循环当 auto 处理（等于没写），
+   Firefox 则回退到 input 自身的固有宽度（默认 size=20，约 180px）去算父级 max-content，
+   父级因此比子级总宽多出 16px；margin-left: auto 把父级顶到右边后这段多余宽度全留在搜索框右侧，
+   看起来就是搜索框没贴右。收窄由工具栏换行与 flex-shrink 负责，不需要百分比上限。
+
+   margin-right 补的是左侧 ghost 按钮的 6px 内边距：按钮没有边框，可视起点比盒子起点内缩 6px，
+   而搜索框自带边框，不补这 6px 两侧可视留白就不对称。 */
 .chatluna-studio-model-trajectory-search {
   position: relative;
   flex: 0 1 164px;
-  width: min(164px, 32%);
+  width: 164px;
+  margin-right: 6px;
 }
 
 .chatluna-studio-model-trajectory-search > svg {

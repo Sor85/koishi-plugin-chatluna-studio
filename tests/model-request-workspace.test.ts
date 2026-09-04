@@ -234,6 +234,12 @@ describe('Studio 模型请求工作台', () => {
     expect(styles).toMatch(/\.chatluna-studio-model-trajectory-control-query\s*\{[^}]*display:\s*flex[^}]*gap:\s*8px[^}]*margin-left:\s*auto/s)
     expect(styles).toMatch(/\.chatluna-studio-model-trajectory-composition-zoom\s*\{[^}]*position:\s*relative[^}]*flex:\s*0 0 auto[^}]*gap:\s*1px/s)
     expect(styles).toMatch(/\.chatluna-studio-model-trajectory-search\s*\{[^}]*flex:\s*0 1 164px/s)
+    // 搜索框宽度必须是确定长度：父级是收缩到内容的 flex 盒，百分比宽度在 Firefox 下会让父级
+    // max-content 回退到 input 固有宽度，多出的宽度会全部留在搜索框右侧，破坏工具栏两侧对称。
+    expect(styles).toMatch(/\.chatluna-studio-model-trajectory-search\s*\{[^}]*width:\s*164px/s)
+    expect(styles).not.toMatch(/\.chatluna-studio-model-trajectory-search\s*\{[^}]*width:[^;]*%/s)
+    // 左侧 ghost 按钮自带 6px 内边距，搜索框带边框，补齐同样的 6px 两侧可视留白才对称。
+    expect(styles).toMatch(/\.chatluna-studio-model-trajectory-search\s*\{[^}]*margin-right:\s*6px/s)
     expect(styles).not.toContain('.chatluna-studio-model-trajectory-composition-zoom.is-expanded')
     expect(styles).not.toMatch(/\.chatluna-studio-model-trajectory-composition-zoom\s*\{[^}]*border:/s)
     expect(styles).not.toMatch(/\.chatluna-studio-model-trajectory-composition-zoom\s*\{[^}]*background:/s)
