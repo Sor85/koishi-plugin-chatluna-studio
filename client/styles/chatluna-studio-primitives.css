@@ -73,6 +73,16 @@
   transition: width 0.14s ease, right 0.14s ease, background 0.14s ease;
 }
 
+/* 轨道隐藏只降 opacity，而 opacity 不参与命中测试：滑块保持 pointer-events: auto 时，滚动区
+   右缘会横着一条完全看不见的热区，指针落上去就触发 thumbEnter 把落点认成滑块，轨道随之常显、
+   不再自动消失。内容仅略微超出时滑块接近轨道满长，整条右缘都会中招。
+   不可滚动的区域另有一重：updateScrollbar 在此提前返回，轨道从未写入 left/top 而退回静态
+   位置，滑块靠 min-height 在视口左上角留下同一种隐形热区并吞掉那里的点击。两者同源，一并
+   由这条规则消除——它们都取不到 .is-visible。 */
+.chatluna-studio-scrollbar-overlay:not(.is-visible) .chatluna-studio-scrollbar-thumb {
+  pointer-events: none;
+}
+
 .chatluna-studio-scrollbar-overlay.is-accent .chatluna-studio-scrollbar-thumb {
   background: color-mix(in srgb, var(--chatluna-studio-accent) 78%, #60a5fa 22%);
 }

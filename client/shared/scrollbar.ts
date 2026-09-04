@@ -1,11 +1,22 @@
 import type { Directive, DirectiveBinding } from 'vue'
 import { computeVisibleScrollbarRect } from './scrollbar-track-bounds'
+import {
+  applyScrollbarCue,
+  createScrollbarVisibility,
+  isScrollbarThumbWide,
+  type ScrollbarCue,
+  type ScrollbarVisibility,
+} from './scrollbar-visibility'
 
 const edgeGap = 8
 const overlayInset = 0
 const overlayWidth = 10
 const minThumbHeight = 28
-const hideDelay = 680
+/**
+ * 指针或滚动停下多久之后收起轨道。取 1.5 秒这一档常见的浮层滚动条自动隐藏时长：短于 1 秒会在
+ * 用户还在读位置时就抽走，长过 2 秒又会让轨道显得赖着不走。
+ */
+const hideDelay = 1500
 
 interface StudioScrollbarState {
   element: HTMLElement
@@ -16,9 +27,7 @@ interface StudioScrollbarState {
   mutationObserver?: MutationObserver
   frame: number
   hideTimer: number
-  hovering: boolean
-  focused: boolean
-  dragging: boolean
+  visibility: ScrollbarVisibility
   dragStartY: number
   dragStartScrollTop: number
   trackHeight: number
@@ -46,27 +55,44 @@ function addListener(
   return () => target.removeEventListener(type, listener, options)
 }
 
-function setVisible(state: StudioScrollbarState, visible: boolean) {
-  state.overlay.classList.toggle('is-visible', visible && state.showOverlay)
-}
-
 function clearHideTimer(state: StudioScrollbarState) {
   if (!state.hideTimer) return
   window.clearTimeout(state.hideTimer)
   state.hideTimer = 0
 }
 
-function stopEvent(event: Event) {
-  event.stopPropagation()
+/** 只把判定结果写进 DOM：可见性与滑块加宽态，不碰倒计时。 */
+function writeScrollbarClasses(state: StudioScrollbarState) {
+  state.overlay.classList.toggle('is-visible', state.visibility.revealed && state.showOverlay)
+  state.overlay.classList.toggle('is-wide', isScrollbarThumbWide(state.visibility))
 }
 
-function scheduleHide(state: StudioScrollbarState) {
+/**
+ * 写 DOM 并把倒计时对齐到判定：需要倒计时就重排，不需要就清掉。
+ *
+ * 每次都重排而不是「已有就不动」：指针在滚动区里连续移动时每一次都要把 hideDelay 推后，否则轨道会
+ * 在指针还在动的时候到点收起，紧接着又被下一次移动唤醒，表现为持续闪烁。也正因为重排会推后收起
+ * 时刻，只有真正的显隐线索才能走这里——组件重渲染那种与指针无关的时机必须只写类名。
+ */
+function syncScrollbar(state: StudioScrollbarState) {
+  writeScrollbarClasses(state)
   clearHideTimer(state)
+  if (!state.visibility.hideScheduled) return
   state.hideTimer = window.setTimeout(() => {
-    if (state.hovering || state.focused || state.dragging) return
-    setVisible(state, false)
-    state.overlay.classList.remove('is-wide')
+    state.hideTimer = 0
+    cue(state, 'hide-timeout')
   }, hideDelay)
+}
+
+/** 显隐只从这里改：判定给出下一个状态，DOM 与计时器跟着同步，几何顺手校正。 */
+function cue(state: StudioScrollbarState, name: ScrollbarCue) {
+  state.visibility = applyScrollbarCue(state.visibility, name)
+  syncScrollbar(state)
+  scheduleUpdate(state)
+}
+
+function stopEvent(event: Event) {
+  event.stopPropagation()
 }
 
 function readAccentColor(element: HTMLElement) {
@@ -91,8 +117,8 @@ function updateScrollbar(state: StudioScrollbarState) {
   const isUsable = element.isConnected && rect.width > 0 && trackHeight > 0 && maxScrollTop > 1
 
   if (!isUsable) {
-    setVisible(state, false)
-    overlay.classList.remove('is-wide')
+    // 只在确实还留着可见状态或倒计时时发线索：cue 会再排一帧校正，无条件发会让两者互相唤醒。
+    if (state.visibility.revealed || state.visibility.hideScheduled) cue(state, 'unusable')
     return
   }
 
@@ -116,17 +142,6 @@ function scheduleUpdate(state: StudioScrollbarState) {
   state.frame = window.requestAnimationFrame(() => updateScrollbar(state))
 }
 
-function showScrollbar(state: StudioScrollbarState) {
-  clearHideTimer(state)
-  scheduleUpdate(state)
-  setVisible(state, true)
-}
-
-function showScrollbarBriefly(state: StudioScrollbarState) {
-  showScrollbar(state)
-  scheduleHide(state)
-}
-
 function updateDraggedScrollTop(state: StudioScrollbarState, clientY: number) {
   const maxScrollTop = state.element.scrollHeight - state.element.clientHeight
   const maxThumbTop = Math.max(1, state.trackHeight - state.thumbHeight)
@@ -135,10 +150,8 @@ function updateDraggedScrollTop(state: StudioScrollbarState, clientY: number) {
 }
 
 function stopDragging(state: StudioScrollbarState) {
-  state.dragging = false
   state.thumb.classList.remove('is-dragging')
-  state.overlay.classList.remove('is-wide')
-  scheduleHide(state)
+  cue(state, 'drag-end')
 }
 
 function createOverlay() {
@@ -157,11 +170,13 @@ function applyScrollbarOptions(
 ) {
   const { overlay } = state
   state.showOverlay = binding.value?.showOverlay !== false
-  // 二级页面保留滚动能力，但设计规范要求隐藏挂载到 body 的自定义轨道。
-  if (!state.showOverlay) setVisible(state, false)
   overlay.classList.toggle('is-hidden-on-narrow', Boolean(binding.value?.hideOnNarrow))
   overlay.classList.toggle('is-accent', binding.value?.tone === 'accent')
   overlay.style.zIndex = String(binding.value?.zIndex ?? 100)
+  // 二级页面保留滚动能力，但设计规范要求隐藏挂载到 body 的自定义轨道。showOverlay 是写 DOM 时
+  // 的门而不是显隐判定的一部分，因此只重写类名：这里的时机是组件重渲染，推后收起时刻会让轨道
+  // 在消息流不断刷新的会话里一直赖着。
+  writeScrollbarClasses(state)
 }
 
 export const vChatlunaStudioScrollbar: Directive<HTMLElement, StudioScrollbarOptions | undefined> = {
@@ -176,9 +191,7 @@ export const vChatlunaStudioScrollbar: Directive<HTMLElement, StudioScrollbarOpt
       showOverlay: binding.value?.showOverlay !== false,
       frame: 0,
       hideTimer: 0,
-      hovering: false,
-      focused: false,
-      dragging: false,
+      visibility: createScrollbarVisibility(),
       dragStartY: 0,
       dragStartScrollTop: 0,
       trackHeight: 0,
@@ -190,62 +203,40 @@ export const vChatlunaStudioScrollbar: Directive<HTMLElement, StudioScrollbarOpt
     element.dataset.chatlunaStudioScrollbar = 'true'
     applyScrollbarOptions(state, binding)
 
-    const enter = () => {
-      state.hovering = true
-      showScrollbar(state)
-    }
-    const leave = () => {
-      state.hovering = false
-      scheduleHide(state)
-    }
-    const focusIn = () => {
-      state.focused = true
-      showScrollbar(state)
-    }
-    const focusOut = () => {
-      state.focused = false
-      scheduleHide(state)
-    }
-    const scroll = () => {
-      showScrollbarBriefly(state)
-    }
+    const enter = () => cue(state, 'pointer-enter-area')
+    const leave = () => cue(state, 'pointer-leave-area')
+    const move = () => cue(state, 'pointer-move-area')
+    const focusIn = () => cue(state, 'focus-in')
+    const focusOut = () => cue(state, 'focus-out')
+    const scroll = () => cue(state, 'scroll')
     const update = () => scheduleUpdate(state)
     const pointerDown = (event: Event) => {
       if (!(event instanceof PointerEvent)) return
       event.preventDefault()
       event.stopPropagation()
-      state.dragging = true
       state.dragStartY = event.clientY
       state.dragStartScrollTop = element.scrollTop
       thumb.classList.add('is-dragging')
-      overlay.classList.add('is-visible', 'is-wide')
-      scheduleUpdate(state)
+      cue(state, 'drag-start')
     }
     const pointerMove = (event: Event) => {
-      if (!state.dragging) return
+      if (!state.visibility.dragging) return
       if (!(event instanceof PointerEvent)) return
       event.preventDefault()
       updateDraggedScrollTop(state, event.clientY)
       scheduleUpdate(state)
     }
     const pointerUp = () => {
-      if (!state.dragging) return
+      if (!state.visibility.dragging) return
       stopDragging(state)
     }
-    const thumbEnter = () => {
-      state.hovering = true
-      showScrollbar(state)
-      overlay.classList.add('is-wide')
-    }
-    const thumbLeave = () => {
-      state.hovering = false
-      if (!state.dragging) overlay.classList.remove('is-wide')
-      scheduleHide(state)
-    }
+    const thumbEnter = () => cue(state, 'pointer-enter-thumb')
+    const thumbLeave = () => cue(state, 'pointer-leave-thumb')
 
     state.cleanup.push(
       addListener(element, 'mouseenter', enter),
       addListener(element, 'mouseleave', leave),
+      addListener(element, 'mousemove', move, { passive: true }),
       addListener(element, 'focusin', focusIn),
       addListener(element, 'focusout', focusOut),
       addListener(element, 'scroll', scroll, { passive: true }),
