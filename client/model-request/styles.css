@@ -265,6 +265,27 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+/* 详情外壳的滚动视口顶边落在分数设备像素上（例如顶边 179.09375px，DPR 2 时是 358.1875 设备
+   像素）。吸顶轨迹头部是独立合成层，与滚动内容层各自取整的结果不一致，裁剪边上会漏出一行滚动
+   正文——只在屏幕合成后可见，自动化截图里量不到（详见 docs/adr/0024）。
+   遮盖条挂在滚动容器之外的 pane 上，不参与那两层的取整；颜色取 pane 自身表面色，而滚动视口
+   顶部三像素在任何状态下都是纯表面（分析态是吸顶头部的背景，其余状态是详情外壳的顶部留白），
+   所以它在任何滚动位置都不可见。左右各让出 17px（详情外壳的 16px 内边距加面板自身 1px 边框），
+   否则遮盖条会在面板左右边框上切出缺口。 */
+.chatluna-studio-model-request-detail-pane {
+  position: relative;
+}
+
+.chatluna-studio-model-request-detail-pane::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0 17px auto;
+  height: 3px;
+  background: var(--chatluna-studio-surface);
+  content: "";
+  pointer-events: none;
+}
+
 .chatluna-studio-model-request-list,
 .chatluna-studio-model-request-detail {
   display: grid;

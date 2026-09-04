@@ -487,6 +487,24 @@ describe('模型请求分析展示模型', () => {
     expect(stickyDividerRule).not.toContain('box-shadow:')
     expect(styles).toContain('.chatluna-studio-workspace.is-frosted .chatluna-studio-model-trajectory-header :is(')
     expect(styles).toMatch(/\.chatluna-studio-workspace\.is-frosted \.chatluna-studio-model-trajectory-header :is\([\s\S]*?\.chatluna-studio-model-trajectory-scope,[\s\S]*?\.chatluna-studio-model-trajectory-controls,[\s\S]*?\.chatluna-studio-model-trajectory-composition-shell/)
+    // ADR 0024：吸顶头部的毛玻璃必须保留——顶边那条接缝由 pane 上的遮盖条负责，
+    // 不得为了压接缝把这一层改成实心。
+    expect(styles).not.toContain('.chatluna-studio-workspace.is-frosted .chatluna-studio-model-trajectory-header::before')
+  })
+
+  it('详情外壳的滚动视口顶边由 pane 上的遮盖条压住子像素接缝', () => {
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+
+    // ADR 0024：遮盖条必须挂在滚动容器之外的 pane 上——挂进详情外壳就会跟着进同一个滚动层，
+    // 与接缝一起取整，压不住。左右让出 17px 才不会在面板边框上切出缺口。
+    expect(styles).toMatch(/\.chatluna-studio-model-request-detail-pane \{\s*position: relative;\s*\}/)
+    const seamRule = styles.slice(styles.indexOf('.chatluna-studio-model-request-detail-pane::after {')).split('}')[0]
+    expect(seamRule).toContain('position: absolute')
+    expect(seamRule).toContain('inset: 0 17px auto')
+    expect(seamRule).toContain('background: var(--chatluna-studio-surface)')
+    expect(seamRule).toContain('pointer-events: none')
+    expect(seamRule).toMatch(/height: [1-9]px/)
+    expect(styles).not.toContain('.chatluna-studio-model-request-detail::after')
   })
 
   it('滚动阅读右侧时只跟随当前条目，不自动改变左侧分类折叠状态', () => {
