@@ -50,7 +50,7 @@ describe('Studio 模型请求工作台', () => {
     expect(styles).toMatch(/\.chatluna-studio-model-request-item\.is-selected,\s*\n\.chatluna-studio-model-request-item\[aria-current="true"\]\s*\{[^}]*background:\s*var\(--chatluna-studio-hover\)/s)
     expect(styles).toMatch(/\.chatluna-studio-model-request-item:hover\s*\{[^}]*background:\s*var\(--chatluna-studio-hover\)/s)
     expect(styles).not.toContain('.chatluna-studio-model-request-item.is-active')
-    expect(workspaceSource).toContain('<StudioAvatar')
+    expect(workspaceSource).toContain('<ModelRequestAvatar')
     expect(workspaceSource).toMatch(/chatluna-studio-model-request-bot-copy[\s\S]*chatluna-studio-model-request-bot-name[\s\S]*resolveRequestBot\(record\)\.name[\s\S]*statusLabel\(record\.status\)[\s\S]*formatConversationLabel\(record\.entities\)[\s\S]*formatStudioDateTime\(record\.createdAt\)[\s\S]*formatDuration\(record\.durationMs\)/)
     expect(workspaceSource).not.toMatch(/class="chatluna-studio-model-request-item"[\s\S]*record\.error\.message/)
     // 名字与头像由会话身份模块从记录自带的实体派生，工作台自己不再拼兜底文案。
@@ -61,6 +61,47 @@ describe('Studio 模型请求工作台', () => {
     expect(workspaceSource).not.toMatch(/<Badge v-if="record\.provider" variant="outline" class="chatluna-studio-model-request-provider">/)
     expect(workspaceSource).not.toMatch(/<Badge v-if="detail\.provider" variant="outline" class="chatluna-studio-model-request-provider">/)
     expect(workspaceSource).toContain('确认清理')
+  })
+
+  it('未归属请求走专属头像：虚线圆里的单色机器人配一道斜线，而不是名称首字母', () => {
+    const avatarSource = readFileSync(resolve('client/model-request/request-avatar.vue'), 'utf8')
+    const workspaceSource = readFileSync(resolve('client/model-request/workspace.vue'), 'utf8')
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+
+    // 专属头像只在未归属时接管；有机器人可显示时仍走共享身份头像，圆形几何不复制一份。
+    expect(avatarSource).toContain('v-if="unattributed"')
+    expect(avatarSource).toContain('chatluna-studio-identity-avatar chatluna-studio-model-request-unattributed-avatar')
+    expect(avatarSource).toContain('<StudioAvatar v-else kind="bot"')
+    // 单色描边：整枚图形只用 currentColor，也不留名称首字母。
+    expect(avatarSource).toContain('stroke="currentColor"')
+    expect(avatarSource).toContain('fill="currentColor"')
+    expect(avatarSource).not.toMatch(/fill="#/)
+    expect(avatarSource).not.toContain('{{ initial')
+    // 机头是描边：实底机头压同色斜线会糊成一片，只能靠底色垫白缝切开，那道缝比斜线还显眼。
+    expect(avatarSource).toContain('<rect x="24" y="32" width="80" height="68" rx="22" />')
+    expect(avatarSource).not.toContain('fill-rule="evenodd"')
+    expect(avatarSource).not.toContain('slash-gap')
+    // 斜线只比机头轮廓多出一点、两端留空隙：不加垫缝，也不贴到虚线环上。
+    expect(avatarSource).toContain('<path d="M26 16L110 100" />')
+    // 形状与 sandbox 插件的内置机器人头像同源，两个插件的未归属头像必须长得一样。
+    expect(avatarSource).toContain('M64 32V16M55 12h18')
+    expect(avatarSource).toContain('<circle cx="49" cy="62" r="8" />')
+    expect(avatarSource).toContain('<circle cx="79" cy="62" r="8" />')
+    expect(avatarSource).toContain('<path d="M45 82h38" />')
+    // 去掉底板后原坐标会明显偏上，靠 viewBox 下移一次补正，而不是逐条路径挪坐标。
+    expect(avatarSource).toContain('viewBox="0 -10 128 128"')
+    // 归属名称就在同一行的标题里，头像不得再声明一次可访问名，否则读屏念两遍。
+    expect(avatarSource).not.toContain('aria-label')
+    // 列表项与详情头部共用同一个头像组件，未归属判定由 resolveRequestBot 一处给出。
+    expect(workspaceSource).not.toContain('<StudioAvatar')
+    expect(workspaceSource).toMatch(/<ModelRequestAvatar\s*\n\s*:unattributed="resolveRequestBot\(record\)\.unattributed"/)
+    expect(workspaceSource).toMatch(/<ModelRequestAvatar\s*\n\s*:unattributed="resolveRequestBot\(detail\)\.unattributed"/)
+    // 归属口径归采集器所有：视图不得拿「有没有 botId」再推一遍。
+    expect(workspaceSource).toMatch(/function resolveRequestBot[\s\S]*?unattributed: record\.attribution === 'unattributed'/)
+    expect(workspaceSource).not.toMatch(/function resolveRequestBot[\s\S]*?unattributed: !record\.entities\.botId/)
+    // 只覆盖描边与配色，色值取自令牌；机器人收一圈，机头与斜线两端都不顶到虚线环。
+    expect(styles).toMatch(/\.chatluna-studio-model-request-unattributed-avatar\s*\{[^}]*border:\s*1px dashed[^}]*color:\s*var\(--chatluna-studio-muted\)[^}]*background:\s*var\(--chatluna-studio-surface-muted\)/s)
+    expect(styles).toMatch(/\.chatluna-studio-model-request-unattributed-avatar\s*>\s*svg\s*\{[^}]*width:\s*calc\(var\(--chatluna-studio-avatar-size[^}]*height:\s*calc\(var\(--chatluna-studio-avatar-size/s)
   })
 
   it('详情概览与元信息：详情头部的导航与视图切换、概览格、用量格、元信息列表与请求头树', () => {

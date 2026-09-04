@@ -79,6 +79,22 @@
   min-width: 0;
 }
 
+/* 未归属请求的专属头像：虚线圆里放一枚单色描边机器人，再压一道斜线。
+   圆形几何仍由 .chatluna-studio-identity-avatar 拥有，这里只覆盖它的描边与配色；
+   色值全部取自工作区令牌，深浅两套主题自动跟随，不为这一处新开色板。 */
+.chatluna-studio-model-request-unattributed-avatar {
+  border: 1px dashed color-mix(in srgb, var(--chatluna-studio-muted) 55%, transparent);
+  color: var(--chatluna-studio-muted);
+  background: var(--chatluna-studio-surface-muted);
+}
+
+/* 机器人按头像直径的 0.62 收一圈：机头与斜线两端都要和虚线环留出空隙，满幅时圆角会顶到环上。
+   公式必须写在使用点上——放进自定义属性会在声明它的元素上就完成替换。 */
+.chatluna-studio-model-request-unattributed-avatar > svg {
+  width: calc(var(--chatluna-studio-avatar-size, 38px) * 0.62);
+  height: calc(var(--chatluna-studio-avatar-size, 38px) * 0.62);
+}
+
 .chatluna-studio-model-request-bot-copy {
   display: grid;
   gap: 2px;

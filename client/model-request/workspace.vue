@@ -158,8 +158,8 @@
             <header>
               <div class="chatluna-studio-model-request-item-title">
                 <span class="chatluna-studio-model-request-bot">
-                  <StudioAvatar
-                    kind="bot"
+                  <ModelRequestAvatar
+                    :unattributed="resolveRequestBot(record).unattributed"
                     :name="resolveRequestBot(record).name"
                     :avatar="resolveRequestBot(record).avatar"
                   />
@@ -203,8 +203,8 @@
           <header>
             <div class="chatluna-studio-model-request-item-title">
               <span class="chatluna-studio-model-request-bot">
-                <StudioAvatar
-                  kind="bot"
+                <ModelRequestAvatar
+                  :unattributed="resolveRequestBot(detail).unattributed"
                   :name="resolveRequestBot(detail).name"
                   :avatar="resolveRequestBot(detail).avatar"
                 />
@@ -629,7 +629,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import ModelRequestJsonTree from './json-tree.vue'
 import ModelRequestTrajectory from './trajectory.vue'
 import ModelResponseContentPreview from './response-content-preview.vue'
-import StudioAvatar from '#client/shared/avatar.vue'
+import ModelRequestAvatar from './request-avatar.vue'
 import {
   formatConversationLabel,
   resolveBotIdentity,
@@ -1090,10 +1090,19 @@ function categoryLabel(value: ModelRequestCategory) {
   return '全部记录'
 }
 
+/**
+ * 一条请求显示成谁：名字与头像由会话身份模块从记录自带的实体派生。
+ *
+ * `unattributed` 取记录的归属判定结果而不是「有没有 botId」：归属口径归采集器所有，
+ * 视图再推一遍就会出现两份判据，采集端改了归属规则这里不会跟着变。
+ */
 function resolveRequestBot(
   record: StudioModelRequestListItem | StudioModelRequestDetail,
-): StudioIdentityDisplay {
-  return resolveBotIdentity(record.entities, { useQQAvatars: props.useQQAvatars })
+): StudioIdentityDisplay & { unattributed: boolean } {
+  return {
+    ...resolveBotIdentity(record.entities, { useQQAvatars: props.useQQAvatars }),
+    unattributed: record.attribution === 'unattributed',
+  }
 }
 
 function statusLabel(status: StudioModelRequestStatus) {
