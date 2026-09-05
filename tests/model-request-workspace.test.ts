@@ -274,7 +274,14 @@ describe('Studio 模型请求工作台', () => {
     // 被变换放大的后代会算进滚动容器的滚动范围；不裁掉它，缩小动画期间视图口会长出一条横向滚动条。
     expect(styles).toMatch(/\.chatluna-studio-model-trajectory-composition-tracks\s*\{[^}]*overflow:\s*clip/s)
     expect(styles).not.toMatch(/\.chatluna-studio-model-trajectory-composition-tracks\s*\{[^}]*overflow:\s*hidden/s)
-    expect(styles).toMatch(/\.chatluna-studio-model-trajectory-composition-bar\.is-variable\s*\{[^}]*background:\s*var\(--chatluna-studio-role-variable\)/s)
+    expect(styles).toMatch(/\.chatluna-studio-model-trajectory-composition-bar\.is-variable\s*\{[^}]*background-color:\s*var\(--chatluna-studio-role-variable\)/s)
+    // 按种类换色必须用 background-color：background 简写会把 background-clip 一起重置回
+    // border-box，基础规则里那份 padding-box 因此失效，1px 透明右边框被分段自己的颜色填满。
+    // 整段会话铺开时那条缝是唯一的分隔手段——实测 Tool Defs 轨道 36 块分段有 18 处相邻间距为 0，
+    // 少了它逐像素只画出 18 段实体，每两块粘成一块，读出来的条数差一倍。
+    for (const modifier of ['is-user', 'is-variable', 'is-assistant', 'is-tool-definition', 'is-tool-interaction']) {
+      expect(styles).not.toMatch(new RegExp(`\\.chatluna-studio-model-trajectory-composition-bar\\.${modifier}\\s*\\{[^}]*background:`, 's'))
+    }
     expect(styles).toMatch(/\.chatluna-studio-model-trajectory-composition-bar\.is-selected\s*\{[^}]*z-index:\s*1[^}]*0 0 0 1px var\(--chatluna-studio-trajectory-layer\)[^}]*0 0 0 2px var\(--chatluna-studio-accent\)/s)
     expect(styles).not.toMatch(/\.chatluna-studio-model-trajectory-composition-bar\.is-selected\s*\{[^}]*outline:/s)
     // 分段之间的间隙与下限只在请求组成 module 里换算一次，两种模式共用：视图各留一份会让

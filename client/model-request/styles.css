@@ -1055,7 +1055,16 @@
    实心条。这条缝是几何之外的补充，不随倍率与格宽变化，两种模式共用同一份声明因此不会让两边的
    读法分叉。background-clip 是必要的：透明边框区域默认仍然画元素自己的背景色，缝会看不出来。
    box-sizing 必须显式声明：缝要从分段自己的宽度里让出来，落到 content-box 上会把每一段
-   各撑宽 1px，同一格里的分段又互相压住。 */
+   各撑宽 1px，同一格里的分段又互相压住。
+   下面按种类换色的五条一律用 background-color 而不是 background：简写会把它管的每一项细节
+   都重置回初始值，其中 background-clip 的初始值正是 border-box，于是换个颜色就顺带把这里的
+   padding-box 抹掉，那 1px 透明边框被分段自己的颜色填满，缝根本没画出来。它不报错也不影响
+   布局，形态是「system 有缝、其余五种都没缝」。一条 18 次请求的记录实测：整段会话铺开时
+   Tool Defs 轨道 36 块分段里有 18 处相邻间距是 0，那条缝是唯一的分隔手段，逐像素数中线只画出
+   18 段实体——每两块粘成一块，读出来的条数正好差一倍；改用 background-color 之后 36 块画出
+   36 段。轨道放大到单条请求时分段本来就隔着一个多像素，那个状态下看不出差别，因此复现必须先
+   把请求折叠回整段会话。被 min-width 撑到互相重叠的分段不在这条声明的管辖内：后一段直接盖住
+   前一段的边框。 */
 .chatluna-studio-model-trajectory-composition-bar {
   position: absolute;
   top: 3px;
@@ -1071,23 +1080,23 @@
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-user {
-  background: var(--chatluna-studio-role-user);
+  background-color: var(--chatluna-studio-role-user);
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-variable {
-  background: var(--chatluna-studio-role-variable);
+  background-color: var(--chatluna-studio-role-variable);
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-assistant {
-  background: var(--chatluna-studio-role-assistant);
+  background-color: var(--chatluna-studio-role-assistant);
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-tool-definition {
-  background: var(--chatluna-studio-role-tool);
+  background-color: var(--chatluna-studio-role-tool);
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-tool-interaction {
-  background: var(--chatluna-studio-role-tool-interaction);
+  background-color: var(--chatluna-studio-role-tool-interaction);
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-selected {
