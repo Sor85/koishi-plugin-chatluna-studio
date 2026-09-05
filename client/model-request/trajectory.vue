@@ -28,7 +28,7 @@
       </div>
       <div class="chatluna-studio-model-trajectory-summary">
         <span>{{ trajectory?.records.length ?? 0 }} 次请求</span>
-        <span>{{ trajectory?.rows.length ?? 0 }} 条事件</span>
+        <span>{{ trajectory?.eventTotal ?? 0 }} 条事件</span>
       </div>
         </header>
 
@@ -58,8 +58,10 @@
             <IconSortAscending v-else data-icon="inline-start" aria-hidden="true" />
             {{ trajectorySortOrder === 'desc' ? '倒序' : '正序' }}
           </Button>
+          <!-- 会话模式的事件行按请求向服务端取，「全部展开」等于把整段会话重新拉回来；
+               默认全折叠之后这个总开关不再成立，展开与折叠一律走每条请求自己的箭头。 -->
           <Button
-            v-if="!analysis"
+            v-if="!analysis && mode !== 'conversation'"
             size="sm"
             variant="ghost"
             :aria-pressed="requestsCollapsed"
@@ -162,12 +164,11 @@
         </div>
       </div>
 
-      <TooltipProvider :delay-duration="500">
-        <div v-if="compositionTracks.length" class="chatluna-studio-model-trajectory-composition-shell">
+      <div v-if="compositionTracks.length" ref="compositionShell" class="chatluna-studio-model-trajectory-composition-shell">
           <section
             class="chatluna-studio-model-trajectory-composition"
             :style="{ minHeight: `${Math.max(50, compositionTracks.length * 14 + 8)}px` }"
-            aria-label="请求体提示词内容占比"
+            :aria-label="compositionScopeLabel"
           >
             <div class="chatluna-studio-model-trajectory-composition-labels" aria-hidden="true">
               <span v-for="track in compositionTracks" :key="track.kind">{{ evidenceTitleLabel(track.kind) }}</span>
@@ -182,49 +183,65 @@
               @pointerup="finishCompositionDrag"
               @pointercancel="finishCompositionDrag"
               @click.capture="handleCompositionClickCapture"
+              @scroll="hideCompositionTooltip"
             >
               <div
                 class="chatluna-studio-model-trajectory-composition-tracks"
                 :style="{ width: `${compositionZoom * 100}%` }"
               >
-                <span
-                  v-for="boundary in compositionBoundaries"
-                  :key="boundary.id"
-                  class="chatluna-studio-model-trajectory-boundary"
-                  :style="{ left: `${boundary.left}%` }"
-                  aria-hidden="true"
-                />
-                <div v-for="track in compositionTracks" :key="track.kind" class="chatluna-studio-model-trajectory-composition-track">
-                  <Tooltip v-for="segment in track.segments" :key="segment.id">
-                    <TooltipTrigger as-child>
-                      <button
-                        type="button"
-                        class="chatluna-studio-model-trajectory-composition-bar"
-                        :class="[
-                          `is-${segment.kind}`,
-                          { 'is-variable': segment.variableId, 'is-selected': isCompositionSegmentSelected(segment) },
-                        ]"
-                        :style="{ left: `${segment.left}%`, width: `${segment.width}%` }"
-                        :aria-label="segment.variableName
-                          ? `变量 ${segment.variableName} 占请求体提示内容的 ${formatPercentage(segment.percentage)}`
-                          : `${evidenceTitleLabel(segment.kind)} 占请求体提示内容的 ${formatPercentage(segment.percentage)}`"
-                        @click="selectPromptSegment(segment)"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <strong>{{ segment.variableName ? `${evidenceTitleLabel('variable')} · ${segment.variableName}` : evidenceTitleLabel(segment.kind) }} · {{ formatPercentage(segment.percentage) }}</strong>
-                      <span>{{ segment.characters.toLocaleString('zh-CN') }} 个字符</span>
-                    </TooltipContent>
-                  </Tooltip>
+                <!-- 焦点层：横轴只铺展开中的那几条请求，窗口切换时整层做一次合成变换。
+                     几何在切换那一拍就是新窗口的，动画只把它摆回旧窗口再放回原位，
+                     否则每一帧都要按新占比重排上千条绝对定位分段。 -->
+                <div ref="compositionFocusLayer" class="chatluna-studio-model-trajectory-composition-focus">
+                  <span
+                    v-for="boundary in compositionBoundaries"
+                    :key="boundary.id"
+                    class="chatluna-studio-model-trajectory-boundary"
+                    :style="{ left: `${boundary.left}%` }"
+                    aria-hidden="true"
+                  />
+                  <div v-for="track in drawnCompositionTracks" :key="track.kind" class="chatluna-studio-model-trajectory-composition-track">
+                    <!-- 整条轨道共用一个浮层：每段各挂一个 Tooltip 组件时，一次会话的上千条分段
+                         会让每次重新取回轨迹都重渲染上千个组件，点击展开的延迟绝大部分花在那里。 -->
+                    <button
+                      v-for="segment in track.segments"
+                      :key="segment.id"
+                      type="button"
+                      class="chatluna-studio-model-trajectory-composition-bar"
+                      :class="[
+                        `is-${segment.kind}`,
+                        { 'is-variable': segment.variableId, 'is-selected': isCompositionSegmentSelected(segment) },
+                      ]"
+                      :style="{ left: `${segment.left}%`, width: `${segment.width}%` }"
+                      :aria-label="compositionSegmentLabel(segment)"
+                      :aria-describedby="hoveredSegment?.id === segment.id ? compositionTooltipId : undefined"
+                      @click="selectPromptSegment(segment)"
+                      @pointerenter="enterCompositionSegment(segment, $event)"
+                      @pointerleave="hideCompositionTooltip"
+                      @focus="enterCompositionSegment(segment, $event)"
+                      @blur="hideCompositionTooltip"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </section>
+          <div
+            v-if="hoveredSegment"
+            :id="compositionTooltipId"
+            ref="compositionTooltip"
+            class="chatluna-studio-model-trajectory-composition-tip"
+            role="tooltip"
+            :style="{ left: `${compositionTooltipPosition.left}px`, top: `${compositionTooltipPosition.top}px` }"
+          >
+            <strong>{{ compositionSegmentTitle(hoveredSegment) }} · {{ formatPercentage(hoveredSegment.percentage) }}</strong>
+            <span>{{ hoveredSegment.characters.toLocaleString('zh-CN') }} 个字符</span>
+            <span v-if="hoveredSegment.segmentCount">{{ compositionSegmentScope(hoveredSegment) }}</span>
+          </div>
         </div>
         <div v-else class="chatluna-studio-model-trajectory-composition-empty">
           {{ mode === 'conversation' ? '当前会话没有可投影的请求组成' : '当前请求体没有可统计的提示词内容' }}
         </div>
-        </TooltipProvider>
       </div>
         <p v-if="mode === 'conversation' && hasUnknownTiming" class="chatluna-studio-model-trajectory-timing-note">
           进行中的请求仅标记开始位置；TTFT 与解码阶段尚无独立时间证据
@@ -331,9 +348,9 @@ import {
   IconZoomOut,
 } from '@tabler/icons-vue'
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { animate } from 'animejs'
 import { Button } from '#client/components/ui/button'
 import { Input } from '#client/components/ui/input'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '#client/components/ui/tooltip'
 import ModelRequestConversationAnalysis from './analysis-view.vue'
 import type { EvidenceNavigation, EvidenceViewRestore } from '#client/shared/evidence-navigation'
 import type { LocateRequest } from '#client/shared/evidence-locator'
@@ -352,6 +369,26 @@ import {
   COMPOSITION_ZOOM_STEP,
   createCompositionZoomPan,
 } from './composition-zoom-pan'
+import {
+  COMPOSITION_FOCUS_EASE,
+  COMPOSITION_FOCUS_TRANSITION_MS,
+  projectCompositionFocusBoundary,
+  projectCompositionFocusSpan,
+  resolveCompositionFocusFlip,
+  resolveCompositionFocusWindow,
+} from './composition-focus'
+import {
+  MODEL_REQUEST_COMPOSITION_KINDS,
+  MODEL_REQUEST_COMPOSITION_MIN_SEGMENT_PIXELS,
+  groupModelRequestCompositionSegments,
+  isModelRequestCompositionSegmentSelected,
+  layoutModelRequestCompositionSegment,
+  layoutModelRequestCompositionSlots,
+} from '../../src/model-request-composition'
+import {
+  createCompositionHoverIntent,
+  resolveCompositionTooltipPosition,
+} from './composition-tooltip'
 import {
   formatModelRequestLabel,
   formatModelRequestOrdinal,
@@ -392,6 +429,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:mode': [mode: 'request' | 'conversation']
+  /** 会话账本展开哪几条请求。事件行由服务端按这份清单下发，因此展开是一次读取而不是纯显示。 */
+  'update:expandedRequestIds': [requestIds: string[]]
   'open-request': [payload: {
     recordId: string
     returnState: {
@@ -425,6 +464,17 @@ const ledgerScrollRestore = createScrollRestore({
 const selectedRowId = ref('')
 const actualDuration = ref(true)
 const compositionViewport = ref<HTMLElement>()
+/** 轨道视图口的像素宽。分段挤不挤得开只能按像素判，而它随窗口与侧栏一起变。 */
+const compositionViewportWidth = ref(0)
+let compositionViewportResizeObserver: ResizeObserver | undefined
+const compositionShell = ref<HTMLElement>()
+const compositionFocusLayer = ref<HTMLElement>()
+let compositionFocusAnimation: ReturnType<typeof animate> | undefined
+const compositionTooltip = ref<HTMLElement>()
+const compositionTooltipId = useId()
+const hoveredSegment = ref<CompositionSegment>()
+const compositionTooltipPosition = ref({ left: 0, top: 0 })
+const compositionHover = createCompositionHoverIntent()
 const {
   zoom: compositionZoom,
   dragging: compositionDragging,
@@ -441,7 +491,18 @@ const {
 })
 const requestsCollapsed = ref(false)
 const trajectorySortOrder = ref<ModelRequestTrajectorySortOrder>('desc')
-const collapsedRequestIds = ref<ReadonlySet<string>>(new Set())
+/**
+ * 单请求模式的折叠集合。会话模式不用它：那边的事件行由服务端按已展开清单下发，
+ * 折叠态因此是「轨迹里没有这一条的行」而不是「有行但藏起来」，两种模式合用一个集合
+ * 会让会话模式在取回新行之前把它们又藏一遍。
+ */
+const localCollapsedRequestIds = ref<ReadonlySet<string>>(new Set())
+const expandedRequestIds = computed(() => new Set(props.trajectory?.expandedRequestIds ?? []))
+const collapsedRequestIds = computed<ReadonlySet<string>>(() => {
+  if (props.mode !== 'conversation') return localCollapsedRequestIds.value
+  const expanded = expandedRequestIds.value
+  return new Set((props.trajectory?.records ?? []).flatMap(({ id }) => expanded.has(id) ? [] : [id]))
+})
 const hiddenKinds = ref<ReadonlySet<StudioEvidenceKind>>(new Set())
 const filtersExpanded = ref(false)
 // 常用证据种类和「耗时」「请求」一起留在工具栏外层；VARIABLE 紧邻 TOOL DEFS 左侧。
@@ -481,24 +542,25 @@ const promptComposition = computed(() => {
   }))
 })
 /**
- * 请求组成图的轨道顺序，按证据在请求体里出现的先后排列：
- * 系统前缀 → 用户消息 → 能力目录 → 模型自己的发言 → 工具往返。
- * Assistant 紧贴 Tool I/O，两者的分段都落在请求尾部，同屏才能看出一次工具往返由哪条发言发起。
- *
- * 单请求与完整会话共用这一份顺序：两种模式的分段来自同一份组成投影，只是横轴一个按占比、
- * 一个按时间铺开；各自留一份种类清单会让同一条会话在切换模式时凭空多出或少掉几条轨道。
+ * 请求组成图的轨道顺序由请求组成 module 独占，服务端聚合每个请求内部的先后也按它排；
+ * 视图再留一份会让同一条会话在切换粒度时凭空多出或少掉几条轨道。
  */
-const COMPOSITION_KINDS = ['system', 'user', 'tool-definition', 'assistant', 'tool-interaction'] as const
+const COMPOSITION_KINDS = MODEL_REQUEST_COMPOSITION_KINDS
 
 interface CompositionSegment {
   /** 渲染键。一条消息被变量切开后会产出多段同 evidenceId 的分段，键必须自带序号才唯一。 */
   id: string
-  evidenceId: string
+  /** 服务端聚合粒度下一段覆盖一整档证据，没有单一身份，因此可缺省。 */
+  evidenceId?: string
+  /** 合成块合了哪几条证据。逐段分段只有自己那一条，因此不带这一项。 */
+  evidenceIds?: readonly string[]
   kind: StudioModelRequestPromptKind
   characters: number
   percentage: number
   left: number
   width: number
+  /** 聚合粒度下这一段合并了多少条逐段证据。 */
+  segmentCount?: number
   variableId?: string
   variableName?: string
   requestId?: string
@@ -507,22 +569,112 @@ interface CompositionSegment {
 const compositionTracks = computed(() => (
   props.mode === 'conversation' ? conversationCompositionTracks.value : requestCompositionTracks.value
 ))
+/**
+ * 轨道当前铺开的那一段会话轴。
+ *
+ * 焦点范围直接取账本的展开清单，不另立一份选中态：轨道放大到哪一段与账本展开哪几条必须是
+ * 同一件事，各存一份就会出现「轨道停在上一条请求上」这类只能靠人回忆的错位。单请求模式没有
+ * 第二条请求可选，它的组成本来就铺满整条轨道。
+ */
+const compositionFocusWindow = computed(() => (
+  props.mode === 'conversation'
+    ? resolveCompositionFocusWindow(timingSegments.value, expandedRequestIds.value)
+    : undefined
+))
+const focusedCompositionTracks = computed(() => {
+  const focus = compositionFocusWindow.value
+  if (!focus) return compositionTracks.value
+  // 轨道清单仍按未投影的分段算：窗口里恰好没有某一档时留一条空轨道，否则左侧标签列会随
+  // 展开与折叠增删，整块组成图跟着上下跳，而动画只作用于横轴。
+  return compositionTracks.value.map(({ kind, segments }) => ({
+    kind,
+    segments: segments.flatMap((segment) => {
+      const span = projectCompositionFocusSpan(focus, segment)
+      return span ? [{ ...segment, ...span }] : []
+    }),
+  }))
+})
+/**
+ * 轨道最终画出来的那几块。
+ *
+ * 会话轨道要多走一步按像素合并：整段会话铺在一屏里时一条请求只分到几十个像素，它内部的几十条
+ * 证据落不到一个像素上，各自兜住像素级最小宽度之后就互相压住，整条请求糊成一根实心条。合并只
+ * 改「这一块里有几条证据」，不改占比；放大到一条请求后每段自己就够宽，同一批分段随之散开。
+ * 单请求模式一条请求独占整条轴，它的分段本来就够宽，不需要这一步。
+ */
+const drawnCompositionTracks = computed(() => {
+  const minWidth = compositionMinSegmentWidth.value
+  if (props.mode !== 'conversation' || !minWidth) return focusedCompositionTracks.value
+  return focusedCompositionTracks.value.map(({ kind, segments }) => ({
+    kind,
+    segments: mergeCompositionSegments(segments, minWidth),
+  }))
+})
+/** 一条分段至少要占轨道的百分之多少才与邻段分得开；轨道宽度随视图口与缩放倍率变化。 */
+const compositionMinSegmentWidth = computed(() => {
+  const pixels = compositionViewportWidth.value * compositionZoom.value
+  return pixels > 0 ? (MODEL_REQUEST_COMPOSITION_MIN_SEGMENT_PIXELS / pixels) * 100 : 0
+})
+
+function mergeCompositionSegments(segments: readonly CompositionSegment[], minWidth: number) {
+  const groups = groupModelRequestCompositionSegments(segments, minWidth)
+  if (groups.length === segments.length) return segments
+  return groups.map(({ from, to, left, width }): CompositionSegment => {
+    const first = segments[from]!
+    if (to - from === 1) return { ...first, left, width }
+    const merged = segments.slice(from, to)
+    // 合成块记得自己合了哪几条证据：这一步是按当前像素做的几何合并，不是身份聚合，合了哪几条
+    // 始终是已知的。少了这份清单，选中判定只能退回服务端聚合段的「请求 + 轨道」，于是点中一条
+    // 证据会把同一轨道上所有合成块一起描边——它们各自只覆盖这一档里的几条，不是整档。
+    const evidenceIds = merged.flatMap(segment => segment.evidenceId ? [segment.evidenceId] : [])
+    // 变量身份要留住：合并不跨变量档的边界，整块因此同在变量档或同在非变量档，丢掉它会让
+    // User 轨道上那一档颜色凭空消失。具体是哪个变量只有整块同名时才成立——相邻的不同变量会
+    // 并成一块，那一块属于变量档但没有单一变量身份。
+    const named = merged.every(segment => segment.variableId === first.variableId)
+    return {
+      id: `${first.id}+${to - from}`,
+      ...(evidenceIds.length ? { evidenceIds } : {}),
+      kind: first.kind,
+      characters: merged.reduce((sum, segment) => sum + segment.characters, 0),
+      percentage: merged.reduce((sum, segment) => sum + segment.percentage, 0),
+      segmentCount: merged.reduce((sum, segment) => sum + (segment.segmentCount ?? 1), 0),
+      left,
+      width,
+      ...(first.requestId ? { requestId: first.requestId } : {}),
+      ...(first.variableId ? { variableId: first.variableId } : {}),
+      ...(named && first.variableName ? { variableName: first.variableName } : {}),
+    }
+  })
+}
+const compositionScopeLabel = computed(() => {
+  const focusedCount = props.mode === 'conversation' && compositionFocusWindow.value
+    ? (props.trajectory?.records ?? []).filter(({ id }) => expandedRequestIds.value.has(id)).length
+    : 0
+  return focusedCount
+    ? `请求体提示词内容占比 · 已放大到展开的 ${focusedCount} 次请求`
+    : '请求体提示词内容占比'
+})
 const requestCompositionTracks = computed(() => {
+  // 单请求模式的那一格就是整条轴；间隙与下限因此与会话模式共用同一份换算。
+  const slot = { left: 0, width: 100 }
   let offset = 0
   const segments = promptComposition.value.map((item, index): CompositionSegment => {
-    const left = offset
+    const start = offset
     offset += item.percentage
-    const gap = index < promptComposition.value.length - 1 ? 0.35 : 0
     return {
-      id: `${index}:${item.evidenceId}`,
-      evidenceId: item.evidenceId,
+      id: `${index}:${item.evidenceId ?? item.kind}`,
+      ...(item.evidenceId ? { evidenceId: item.evidenceId } : {}),
       kind: item.kind,
       characters: item.characters,
       percentage: item.percentage,
+      ...(item.segmentCount ? { segmentCount: item.segmentCount } : {}),
       ...(item.variableId ? { variableId: item.variableId } : {}),
       ...(item.variableName ? { variableName: item.variableName } : {}),
-      left,
-      width: Math.min(Math.max(item.percentage - gap, 0.35), Math.max(100 - left, 0.35)),
+      ...layoutModelRequestCompositionSegment(slot, {
+        start,
+        span: item.percentage,
+        gapAfter: index < promptComposition.value.length - 1,
+      }),
     }
   })
   return groupCompositionTracks(COMPOSITION_KINDS, segments)
@@ -546,20 +698,22 @@ const conversationCompositionTracks = computed(() => {
     let used = 0
     items.forEach((item, index) => {
       const percentage = (item.characters / total) * 100
-      const left = slot.left + (used / 100) * slot.width
-      const rawWidth = (percentage / 100) * slot.width
-      const gap = index < items.length - 1 ? Math.min(0.25, rawWidth / 4) : 0
+      const span = layoutModelRequestCompositionSegment(slot, {
+        start: used,
+        span: percentage,
+        gapAfter: index < items.length - 1,
+      })
       used += percentage
       segments.push({
-        id: `${slot.id}:${index}:${item.evidenceId}`,
-        evidenceId: item.evidenceId,
+        id: `${slot.id}:${index}:${item.evidenceId ?? item.kind}`,
+        ...(item.evidenceId ? { evidenceId: item.evidenceId } : {}),
         kind: item.kind,
         characters: item.characters,
         percentage,
+        ...(item.segmentCount ? { segmentCount: item.segmentCount } : {}),
         ...(item.variableId ? { variableId: item.variableId } : {}),
         ...(item.variableName ? { variableName: item.variableName } : {}),
-        left,
-        width: Math.min(Math.max(rawWidth - gap, 0.35), Math.max(slot.left + slot.width - left, 0.35)),
+        ...span,
         requestId: slot.id,
       })
     })
@@ -567,13 +721,20 @@ const conversationCompositionTracks = computed(() => {
   return groupCompositionTracks(COMPOSITION_KINDS, segments)
 })
 
+/** 一趟分桶而不是每档筛一遍：聚合前的会话分段可以有上万条，逐档 filter 等于把它们扫五遍。 */
 function groupCompositionTracks(
   kinds: readonly StudioModelRequestPromptKind[],
   segments: readonly CompositionSegment[],
 ) {
+  const byKind = new Map<StudioModelRequestPromptKind, CompositionSegment[]>()
+  for (const segment of segments) {
+    const bucket = byKind.get(segment.kind)
+    if (bucket) bucket.push(segment)
+    else byKind.set(segment.kind, [segment])
+  }
   return kinds.flatMap((kind) => {
-    const kindSegments = segments.filter(segment => segment.kind === kind)
-    return kindSegments.length ? [{ kind, segments: kindSegments }] : []
+    const kindSegments = byKind.get(kind)
+    return kindSegments?.length ? [{ kind, segments: kindSegments }] : []
   })
 }
 const evidenceFilter = computed(() => ({
@@ -632,7 +793,24 @@ watch(stickyHeaderElement, (header) => {
   stickyHeaderResizeObserver.observe(header)
 }, { flush: 'post' })
 
-onBeforeUnmount(() => stickyHeaderResizeObserver?.disconnect())
+watch(compositionViewport, (viewport) => {
+  compositionViewportResizeObserver?.disconnect()
+  compositionViewportResizeObserver = undefined
+  compositionViewportWidth.value = viewport?.clientWidth ?? 0
+  if (!viewport || typeof ResizeObserver === 'undefined') return
+  compositionViewportResizeObserver = new ResizeObserver(() => {
+    compositionViewportWidth.value = viewport.clientWidth
+  })
+  compositionViewportResizeObserver.observe(viewport)
+}, { flush: 'post' })
+
+onBeforeUnmount(() => {
+  stickyHeaderResizeObserver?.disconnect()
+  compositionViewportResizeObserver?.disconnect()
+  compositionHover.dispose()
+  compositionFocusAnimation?.complete()
+  compositionFocusAnimation = undefined
+})
 
 function restoreTrajectoryPosition() {
   const state = props.restoreState
@@ -655,31 +833,75 @@ const timingBounds = computed(() => {
   return { start, end: Math.max(end, start + 1) }
 })
 const totalDuration = computed(() => timingBounds.value.end - timingBounds.value.start)
-const timingSegments = computed(() => requestRows.value.map((row, rowIndex) => {
-  const start = row.startedAt ? Date.parse(row.startedAt) : timingBounds.value.start
-  const durationMs = Math.max(row.durationMs ?? 0, row.status === 'pending' ? 0 : 1)
-  const left = ((start - timingBounds.value.start) / totalDuration.value) * 100
-  const width = durationMs > 0
-    ? actualDuration.value
-      ? Math.max((durationMs / totalDuration.value) * 100, 0.75)
-      : Math.max(100 / Math.max(requestRows.value.length, 1), 2)
-    : 0
-  const normalizedLeft = actualDuration.value
-    ? Math.min(left, 99.25)
-    : (rowIndex / Math.max(requestRows.value.length, 1)) * 100
-  return {
+const timingSegments = computed(() => {
+  const rows = requestRows.value
+  const evenSpan = 100 / Math.max(rows.length, 1)
+  // 自然位置与实际铺位分成两步：位置由布局方式决定，互不重叠由请求组成 module 的扫描保证。
+  // 视图自己夹一遍（原先的 `Math.min(left, 99.25)`）只能挡住越出右边界，挡不住彼此重叠。
+  const boxes = layoutModelRequestCompositionSlots(rows.map((row, rowIndex) => {
+    const start = row.startedAt ? Date.parse(row.startedAt) : timingBounds.value.start
+    const durationMs = Math.max(row.durationMs ?? 0, row.status === 'pending' ? 0 : 1)
+    if (!actualDuration.value) {
+      return { start: rowIndex * evenSpan, span: durationMs > 0 ? evenSpan : 0 }
+    }
+    return {
+      start: ((start - timingBounds.value.start) / totalDuration.value) * 100,
+      span: durationMs > 0 ? (durationMs / totalDuration.value) * 100 : 0,
+    }
+  }))
+  return rows.map((row, rowIndex) => ({
     id: row.requestId ?? row.id,
     label: `${requestOrdinal(row.requestId)} · ${requestLabel(row.requestId)}`,
     durationMs: row.durationMs ?? 0,
     startedAt: row.startedAt,
     status: row.status,
-    left: normalizedLeft,
-    width: Math.min(width, 100 - normalizedLeft),
-  }
-}))
+    ...boxes[rowIndex]!,
+  }))
+})
 const requestBoundaries = computed(() => timingSegments.value.slice(1).map(({ id, left }) => ({ id, left })))
-const compositionBoundaries = computed(() => props.mode === 'conversation' ? requestBoundaries.value : [])
+const compositionBoundaries = computed(() => {
+  if (props.mode !== 'conversation') return []
+  const focus = compositionFocusWindow.value
+  return requestBoundaries.value.flatMap(({ id, left }) => {
+    const position = projectCompositionFocusBoundary(focus, left)
+    return position === undefined ? [] : [{ id, left: position }]
+  })
+})
 const hasUnknownTiming = computed(() => requestRows.value.some(({ status, durationMs }) => status === 'pending' || durationMs === undefined))
+
+/**
+ * 焦点窗口切换时把轨道从旧窗口缩放到新窗口。
+ *
+ * 变换写在焦点层这一个元素上，因此上千条分段不参与逐帧重排。`flush: 'post'` 是必须的：
+ * 新几何要先落进 DOM，起始帧才能把它摆回旧窗口的位置；当拍写入会被随后的更新覆盖。
+ *
+ * 这段注册必须排在时间分段之后。`watch` 会在建立时先求一次源值以便记住旧值，而窗口从时间分段
+ * 求得——放到时间分段声明之前，整个轨迹视图会在 setup 阶段抛出「Cannot access before
+ * initialization」并整块渲染不出来。
+ */
+watch(compositionFocusWindow, (next, previous) => {
+  const flip = resolveCompositionFocusFlip(previous, next)
+  // 自动刷新会把同一个窗口重新求一遍值；没有位移就不动正在跑的那一段动画。
+  if (!flip) return
+  // 上一段必须先推到终态：两个 transform 同时驱动同一元素时，后写入的会被前一段每帧覆盖。
+  compositionFocusAnimation?.complete()
+  compositionFocusAnimation = undefined
+  const layer = compositionFocusLayer.value
+  if (!layer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  // 先写起始帧，避免动画首个 tick 之前闪现终态。
+  layer.style.transform = `translateX(${flip.translateX}%) scaleX(${flip.scaleX})`
+  compositionFocusAnimation = animate(layer, {
+    translateX: [`${flip.translateX}%`, '0%'],
+    scaleX: [flip.scaleX, 1],
+    duration: COMPOSITION_FOCUS_TRANSITION_MS,
+    ease: COMPOSITION_FOCUS_EASE,
+    onComplete: () => {
+      // 终态就是原位，因此收尾只需要清掉内联变换，让静止态回到样式表。
+      layer.style.transform = ''
+      compositionFocusAnimation = undefined
+    },
+  })
+}, { flush: 'post' })
 
 function isRowSearchMuted(row: StudioModelRequestTrajectoryRow) {
   return Boolean(searchMutedRowIds.value?.has(row.id))
@@ -690,7 +912,17 @@ function isRequestRowCollapsed(row: StudioModelRequestTrajectoryRow) {
 }
 
 function toggleRequestCollapsed(row: StudioModelRequestTrajectoryRow) {
-  collapsedRequestIds.value = toggleModelRequestTrajectoryCollapse(collapsedRequestIds.value, row.requestId)
+  if (props.mode !== 'conversation') {
+    localCollapsedRequestIds.value = toggleModelRequestTrajectoryCollapse(localCollapsedRequestIds.value, row.requestId)
+    return
+  }
+  if (!row.requestId) return
+  emit('update:expandedRequestIds', [...toggleFilterMember(expandedRequestIds.value, row.requestId)])
+}
+
+function expandRequest(requestId: string) {
+  if (props.mode !== 'conversation' || expandedRequestIds.value.has(requestId)) return
+  emit('update:expandedRequestIds', [...expandedRequestIds.value, requestId])
 }
 
 function handleCompositionClickCapture(event: MouseEvent) {
@@ -699,25 +931,126 @@ function handleCompositionClickCapture(event: MouseEvent) {
   event.stopPropagation()
 }
 
-function selectPromptSegment(segment: CompositionSegment) {
-  if (props.analysis) {
-    internalAnalysisLocateRequest.value = props.navigation.locateEvidence(segment.evidenceId)
-    return
-  }
-  // 组成分段与账本行共享模型证据身份；同一条证据在两个入口一定选中同一行。
-  const row = (props.trajectory?.rows ?? []).find(candidate => (
-    candidate.evidenceId === segment.evidenceId
-    && (!segment.requestId || candidate.requestId === segment.requestId)
-  ))
-  if (row) selectedRowId.value = row.id
+/** 最近一次量到的浮层尺寸。首帧还没渲染出来时用它先落位，避免浮层在上一个分段的位置闪一下。 */
+let compositionTooltipSize = { width: 168, height: 46 }
+
+function enterCompositionSegment(segment: CompositionSegment, event: Event) {
+  const bar = event.currentTarget
+  if (!(bar instanceof HTMLElement)) return
+  compositionHover.enter(() => {
+    hoveredSegment.value = segment
+    placeCompositionTooltip(bar)
+    void nextTick(() => placeCompositionTooltip(bar))
+  })
 }
 
+function hideCompositionTooltip() {
+  compositionHover.leave(() => {
+    hoveredSegment.value = undefined
+  })
+}
+
+function placeCompositionTooltip(bar: HTMLElement) {
+  const shell = compositionShell.value
+  if (!shell) return
+  const tip = compositionTooltip.value
+  if (tip) compositionTooltipSize = { width: tip.offsetWidth, height: tip.offsetHeight }
+  compositionTooltipPosition.value = resolveCompositionTooltipPosition({
+    bar: bar.getBoundingClientRect(),
+    shell: shell.getBoundingClientRect(),
+    // 表头声明了 overflow: clip，浮层顶到它的上边缘就会被切掉。
+    clip: (stickyHeaderElement.value ?? shell).getBoundingClientRect(),
+    tooltip: compositionTooltipSize,
+  })
+}
+
+function selectPromptSegment(segment: CompositionSegment) {
+  const evidenceId = compositionSegmentLanding(segment)
+  if (evidenceId) {
+    if (props.analysis) {
+      internalAnalysisLocateRequest.value = props.navigation.locateEvidence(evidenceId)
+      return
+    }
+    // 组成分段与账本行共享模型证据身份；同一条证据在两个入口一定选中同一行。
+    const row = (props.trajectory?.rows ?? []).find(candidate => (
+      candidate.evidenceId === evidenceId
+      && (!segment.requestId || candidate.requestId === segment.requestId)
+    ))
+    if (row) {
+      selectedRowId.value = row.id
+      return
+    }
+  }
+  // 剩下两种块的落点都是那条请求本身：服务端聚合段没有证据身份，而会话模式只给展开的请求下发
+  // 事件行，折叠中的请求即使分段自带身份也还没有行可选。展开它并选中请求边界行，逐条证据随
+  // 展开后的账本一起出现。
+  if (!segment.requestId) return
+  expandRequest(segment.requestId)
+  const boundary = (props.trajectory?.rows ?? []).find(row => row.kind === 'request' && row.requestId === segment.requestId)
+  if (boundary) selectedRowId.value = boundary.id
+}
+
+/**
+ * 点这一块会落到哪一条证据上。
+ *
+ * 合成块取它合进去的第一条：整块画在一起是因为在当前像素下挤不开，不是因为身份不明，
+ * 因此落点仍然精确到单条证据，而不是退回整条请求。服务端聚合段没有证据身份，因此没有落点。
+ */
+function compositionSegmentLanding(segment: CompositionSegment) {
+  return segment.evidenceId ?? segment.evidenceIds?.[0]
+}
+
+/**
+ * 点这一块会不会落到一条具体的证据上。
+ *
+ * 与落点解析同源，但只问「有没有证据身份、那条请求的事件行下发了吗」这两件事：无障碍名要给每一
+ * 块各求一次，逐块回账本里找行会让一屏上千块各扫一遍上万行的账本。
+ */
+function compositionSegmentLandsOnEvidence(segment: CompositionSegment) {
+  if (!compositionSegmentLanding(segment)) return false
+  return props.mode !== 'conversation' || !segment.requestId || expandedRequestIds.value.has(segment.requestId)
+}
+
+/** 组成图当前的选中态：分析视图按定位信号，账本按选中行。判定本身由请求组成 module 独占。 */
+const compositionSelection = computed(() => {
+  if (props.analysis) {
+    const evidenceId = analysisLocateRequest.value?.evidenceId
+    return evidenceId ? { evidenceId } : undefined
+  }
+  return selectedRow.value
+})
+
 function isCompositionSegmentSelected(segment: CompositionSegment) {
-  if (props.analysis) return analysisLocateRequest.value?.evidenceId === segment.evidenceId
-  const selected = selectedRow.value
-  if (!selected) return false
-  return selected.evidenceId === segment.evidenceId
-    && (!segment.requestId || selected.requestId === segment.requestId)
+  return isModelRequestCompositionSegmentSelected(segment, compositionSelection.value)
+}
+
+/**
+ * 一条分段属于哪一档。
+ *
+ * 变量档按变量身份报而不是按轨道报：变量片段落在 User 轨道上，却自带一档颜色，只按轨道报会让
+ * 紫红色的那一块在浮层里自称 User。合成块可能并了相邻的几个不同变量，那时它仍然是变量档，
+ * 只是没有单一变量名可报。
+ */
+function compositionSegmentTitle(segment: CompositionSegment) {
+  if (!segment.variableId) return evidenceTitleLabel(segment.kind)
+  const variable = evidenceTitleLabel('variable')
+  return segment.variableName ? `${variable} · ${segment.variableName}` : variable
+}
+
+function compositionSegmentLabel(segment: CompositionSegment) {
+  const share = `占请求体提示内容的 ${formatPercentage(segment.percentage)}`
+  const title = compositionSegmentTitle(segment)
+  // 合成块与聚合段都覆盖多条证据，无障碍名要说出这一层：浮层里的那句只有指针能读到。
+  const scope = segment.segmentCount ? `，${compositionSegmentScope(segment)}` : ''
+  if (segment.requestId && !compositionSegmentLandsOnEvidence(segment)) {
+    return `${requestOrdinal(segment.requestId)} 的 ${title} ${share}${scope}，点击展开这条请求`
+  }
+  return `${title} ${share}${scope}`
+}
+
+/** 聚合段与合成块的补充说明：这一块把多少条证据画成了一段。 */
+function compositionSegmentScope(segment: CompositionSegment) {
+  return `合并 ${segment.segmentCount} 条证据`
 }
 
 function openSelectedRequest() {

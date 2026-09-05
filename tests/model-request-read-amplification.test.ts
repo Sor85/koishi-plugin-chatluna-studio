@@ -57,7 +57,14 @@ describe('模型请求读取放大', () => {
     const detail = (await store.getRecord(records[0]!.id))!
     projections.length = 0
 
-    const trajectory = await buildStudioModelRequestTrajectoryFromStore({ record: detail, mode: 'conversation', store })
+    // 展开被读取的那条请求，才有事件行可以核对变量出自哪一份投影；
+    // 折叠的那三条同样要走完投影，投影次数因此与展开与否无关。
+    const trajectory = await buildStudioModelRequestTrajectoryFromStore({
+      record: detail,
+      mode: 'conversation',
+      store,
+      expandedRequestIds: [records[0]!.id],
+    })
 
     expect(trajectory.records).toHaveLength(4)
     // 每条记录一次；派生变量与请求组成都复用同一份投影，不再各自构造一次详情。

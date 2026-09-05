@@ -37,8 +37,18 @@ function createStore() {
   return { store, first, second }
 }
 
-async function trajectoryFor(store: StudioModelRequestStore, recordId: string, mode: 'request' | 'conversation') {
-  return buildStudioModelRequestTrajectoryFromStore({ record: (await store.getRecord(recordId))!, mode, store })
+async function trajectoryFor(
+  store: StudioModelRequestStore,
+  recordId: string,
+  mode: 'request' | 'conversation',
+  expandedRequestIds?: readonly string[],
+) {
+  return buildStudioModelRequestTrajectoryFromStore({
+    record: (await store.getRecord(recordId))!,
+    mode,
+    store,
+    ...(expandedRequestIds ? { expandedRequestIds } : {}),
+  })
 }
 
 describe('模型请求轨迹投影', () => {
@@ -109,7 +119,7 @@ describe('模型请求轨迹投影', () => {
     ])
     const rowEvidenceIds = new Set(trajectory.rows.flatMap(({ evidenceId }) => evidenceId ? [evidenceId] : []))
     for (const item of trajectory.promptComposition) {
-      expect(rowEvidenceIds.has(item.evidenceId), item.evidenceId).toBe(true)
+      expect(rowEvidenceIds.has(item.evidenceId ?? ''), item.evidenceId).toBe(true)
     }
   })
 
@@ -264,7 +274,11 @@ describe('模型请求轨迹投影', () => {
     expect(trajectory.conversationId).toBe('conversation-1')
     expect(trajectory.records.map(({ sequence }) => sequence)).toEqual([1, 2])
     expect(trajectory.rows.filter(({ kind }) => kind === 'request')).toHaveLength(2)
-    expect(trajectory.rows.some(({ kind }) => kind === 'tool-definition')).toBe(true)
+    // 会话模式默认只给请求边界行，服务端不替调用方展开任何一条；工具定义要展开第一条之后才下发。
+    expect(trajectory.expandedRequestIds).toEqual([])
+    expect(trajectory.rows.some(({ kind }) => kind === 'tool-definition')).toBe(false)
+    const expanded = await trajectoryFor(store, second.id, 'conversation', [trajectory.records[0]!.id])
+    expect(expanded.rows.some(({ kind }) => kind === 'tool-definition')).toBe(true)
     expect(trajectory.promptComposition.map(({ kind, requestId }) => ({ kind, requestId }))).toEqual([
       { kind: 'system', requestId: trajectory.records[0]?.id },
       { kind: 'user', requestId: trajectory.records[0]?.id },
@@ -284,5 +298,113 @@ describe('模型请求轨迹投影', () => {
 
     expect(trajectory.rows.some(({ source }) => source === 'response')).toBe(false)
     expect(trajectory.rows.map(({ kind }) => kind)).toEqual(['request', 'user'])
+  })
+})
+
+/**
+ * 一次会话里第 N 条请求的请求体本身就包含前 N 轮历史，因此逐条全量下发会让账本行数与
+ * 组成分段数按记录数平方增长。这一组守的是「行按请求展开、分段按可辨识度聚合」这两条读取契约。
+ */
+describe('会话轨迹的按需展开与组成粒度', () => {
+  function createConversation(records: number, messagesPerRequest: number) {
+    const store = new StudioModelRequestStore()
+    const appended = Array.from({ length: records }, (_, turn) => store.append({
+      status: 'success',
+      durationMs: 100,
+      provider: 'openai',
+      model: 'gpt-4.1',
+      attribution: 'attributed',
+      entities: { botId: 'bot-1', conversationId: 'conversation-long' },
+      requestBodyAvailable: true,
+      requestBody: {
+        messages: Array.from({ length: messagesPerRequest }, (_, index) => ({
+          role: 'user',
+          content: `第 ${turn} 轮第 ${index} 条`,
+        })),
+      },
+      responseBodyStatus: 'unavailable' as const,
+    }))
+    return { store, records: appended }
+  }
+
+  it('默认只下发请求边界行，事件总数仍然覆盖整段会话', async () => {
+    const { store, records } = createConversation(6, 4)
+    const trajectory = await trajectoryFor(store, records[5]!.id, 'conversation')
+
+    expect(trajectory.rows.filter(({ kind }) => kind === 'request')).toHaveLength(6)
+    // 六条请求各 4 条用户消息；一条事件行都不下发。
+    expect(trajectory.eventTotal).toBe(24)
+    expect(trajectory.rows.filter(({ kind }) => kind !== 'request')).toHaveLength(0)
+    expect(trajectory.expandedRequestIds).toEqual([])
+  })
+
+  /**
+   * 这一条守的是「折得下来」：服务端一旦替调用方补上被读取的那条请求，它就永远折不起来——
+   * 用户点箭头，客户端把它移出清单，下一次读取又把它加回来，界面纹丝不动。
+   * 默认展开哪一条属于视图状态，由详情视图播种一次（见 `tests/model-request-detail-view.test.ts`）。
+   */
+  it('清单里没有被读取的那条请求时，服务端不把它补回来', async () => {
+    const { store, records } = createConversation(6, 4)
+    const collapsed = await trajectoryFor(store, records[5]!.id, 'conversation', [])
+    const seeded = await trajectoryFor(store, records[5]!.id, 'conversation', [records[5]!.id])
+
+    expect(collapsed.expandedRequestIds).toEqual([])
+    expect(collapsed.rows.filter(({ requestId }) => requestId === records[5]!.id)).toHaveLength(1)
+    expect(seeded.expandedRequestIds).toEqual([records[5]!.id])
+    expect(seeded.rows.filter(({ requestId }) => requestId === records[5]!.id)).toHaveLength(5)
+  })
+
+  it('展开某条请求只取回那一条的事件行，行序号仍按整段会话编号', async () => {
+    const { store, records } = createConversation(6, 4)
+    const trajectory = await trajectoryFor(store, records[5]!.id, 'conversation', [records[1]!.id, records[5]!.id])
+
+    expect(trajectory.expandedRequestIds).toEqual([records[1]!.id, records[5]!.id])
+    expect(trajectory.rows.filter(({ requestId }) => requestId === records[1]!.id)).toHaveLength(5)
+    expect(trajectory.rows.filter(({ kind }) => kind !== 'request')).toHaveLength(8)
+    // 折叠的请求不占行，但它们的事件仍然占序号：序号是整段会话里的位置而不是本次下发的下标。
+    expect(trajectory.rows.filter(({ requestId }) => requestId === records[5]!.id).map(({ index }) => index))
+      .toEqual([26, 27, 28, 29, 30])
+  })
+
+  it('不在本次会话里的请求标识不会凭空展开', async () => {
+    const { store, records } = createConversation(3, 2)
+    const trajectory = await trajectoryFor(store, records[0]!.id, 'conversation', ['record-not-here'])
+
+    expect(trajectory.expandedRequestIds).toEqual([])
+  })
+
+  it('请求少时组成图保持逐条证据粒度', async () => {
+    const { store, records } = createConversation(4, 6)
+    const trajectory = await trajectoryFor(store, records[3]!.id, 'conversation')
+
+    expect(trajectory.granularity).toBe('evidence')
+    expect(trajectory.promptComposition).toHaveLength(24)
+    expect(trajectory.promptComposition.every(({ evidenceId }) => evidenceId)).toBe(true)
+    expect(trajectory.promptComposition.every(({ segmentCount }) => segmentCount === undefined)).toBe(true)
+  })
+
+  it('分段挤到看不清时改按每请求每种类聚合，字符总量不变', async () => {
+    const { store, records } = createConversation(30, 100)
+    const trajectory = await trajectoryFor(store, records[29]!.id, 'conversation')
+    const detailed = trajectory.records.length * 100
+
+    expect(trajectory.granularity).toBe('aggregate')
+    // 三十条请求各一档 User，聚合后只剩三十段；逐条粒度下是三千段。
+    expect(trajectory.promptComposition).toHaveLength(30)
+    expect(trajectory.promptComposition.every(({ kind, segmentCount }) => kind === 'user' && segmentCount === 100)).toBe(true)
+    expect(trajectory.promptComposition.reduce((sum, { segmentCount }) => sum + (segmentCount ?? 0), 0)).toBe(detailed)
+    // 聚合段没有单一证据身份，视图因此按「请求 + 轨道」而不是证据身份判定选中。
+    expect(trajectory.promptComposition.every(({ evidenceId }) => evidenceId === undefined)).toBe(true)
+    expect(trajectory.promptComposition.every(({ requestId }) => requestId)).toBe(true)
+  })
+
+  it('单请求轨迹恒为逐条证据粒度且全展开', async () => {
+    const { store, records } = createConversation(30, 100)
+    const trajectory = await trajectoryFor(store, records[29]!.id, 'request')
+
+    expect(trajectory.granularity).toBe('evidence')
+    expect(trajectory.expandedRequestIds).toEqual([records[29]!.id])
+    expect(trajectory.rows.filter(({ kind }) => kind !== 'request')).toHaveLength(100)
+    expect(trajectory.eventTotal).toBe(100)
   })
 })

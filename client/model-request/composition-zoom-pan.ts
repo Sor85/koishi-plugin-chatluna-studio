@@ -1,4 +1,9 @@
 import { ref } from 'vue'
+import {
+  MODEL_REQUEST_COMPOSITION_ZOOM_MAX,
+  MODEL_REQUEST_COMPOSITION_ZOOM_MIN,
+  MODEL_REQUEST_COMPOSITION_ZOOM_STEP,
+} from '../../src/model-request-composition'
 
 /**
  * 请求组成图轨道的缩放与横向拖动。
@@ -7,10 +12,13 @@ import { ref } from 'vue'
  * 滚不动）、位移超过阈值才算拖动（否则单击变成 0 像素拖动）、拖完短时间内吃掉一次
  * click（否则松手就顺带选中了指针下的分段）、以及只有真的开始拖动才接住指针。
  * 缩放还要做锚点补偿，让指针底下的内容保持不动，否则放大后视野会跳到轨道开头。
+ *
+ * 倍率上下界来自请求组成 module：服务端的组成粒度判据按最大倍率折算分段宽度，
+ * 两处各写一个数就会出现「按逐段下发但拉到头仍然挤成一团」。
  */
-export const COMPOSITION_ZOOM_MIN = 1
-export const COMPOSITION_ZOOM_MAX = 10
-export const COMPOSITION_ZOOM_STEP = 0.25
+export const COMPOSITION_ZOOM_MIN = MODEL_REQUEST_COMPOSITION_ZOOM_MIN
+export const COMPOSITION_ZOOM_MAX = MODEL_REQUEST_COMPOSITION_ZOOM_MAX
+export const COMPOSITION_ZOOM_STEP = MODEL_REQUEST_COMPOSITION_ZOOM_STEP
 /** 低于这个位移仍算单击：触控板和带手抖的鼠标在按下瞬间几乎总有 1~2 像素漂移。 */
 export const COMPOSITION_DRAG_THRESHOLD_PX = 3
 export const COMPOSITION_CLICK_SUPPRESSION_MS = 250

@@ -255,6 +255,7 @@
             :restore-state="navigation.viewRestore.value"
             @open-request="openRelatedRequest"
             @inspect-request="inspectRelatedRequest"
+            @update:expanded-request-ids="updateExpandedTrajectoryRequests"
           />
           <template v-else>
           <section class="chatluna-studio-model-request-overview" aria-label="请求概览">
@@ -755,10 +756,12 @@ const {
   bodyView,
   responseView,
   headersExpanded,
+  expandedTrajectoryRequestIds,
   trajectoryMode,
   showNewDetail,
   showEvidenceAnalysis,
   showRequestBody,
+  expandTrajectoryRequestByDefault,
   snapshot: detailViewSnapshot,
   restore: restoreDetailView,
   toggleHeaders,
@@ -908,6 +911,8 @@ watch(() => props.detail?.id, () => {
 })
 
 watch(detailView, () => {
+  // 进入会话账本时播种默认展开的那一条；已有展开清单（例如从原始请求返回）时不动它。
+  if (detailView.value === 'trajectory' && props.detail) expandTrajectoryRequestByDefault(props.detail.id)
   fetchTrajectory(trajectoryMode.value)
 })
 
@@ -951,7 +956,7 @@ function applyEntryState() {
   restoreDetailView(state)
   emit('query', createModelRequestRecordsQuery(state.category, { order: sortOrder.value }))
   emit('open', { recordId: state.recordId })
-  emit('trajectory', { recordId: state.recordId, mode: 'request' })
+  emit('trajectory', trajectoryQuery(state.recordId, 'request'))
   props.navigation.applyEntry(state.seq, filtersChanged)
   arriveAtNavigationTarget()
 }
@@ -990,7 +995,7 @@ function refresh(limit = MODEL_REQUEST_PAGE_SIZE) {
   if (selectedRecordId.value) {
     emit('open', { recordId: selectedRecordId.value })
     // 同一条记录从进行中变为已完成时 id 不变，不能只靠详情 id watcher 重拉轨迹。
-    emit('trajectory', { recordId: selectedRecordId.value, mode: trajectoryMode.value })
+    emit('trajectory', trajectoryQuery(selectedRecordId.value, trajectoryMode.value))
   }
 }
 
@@ -1011,13 +1016,35 @@ function openRecord(recordId: string) {
   inspectRecordId = undefined
   props.navigation.selectOtherRecord()
   emit('open', { recordId })
-  emit('trajectory', { recordId, mode: trajectoryMode.value })
+  emit('trajectory', trajectoryQuery(recordId, trajectoryMode.value))
+}
+
+/**
+ * 一次轨迹读取的完整参数。
+ *
+ * 六个发起点全部经由这里取参：会话账本的事件行是按已展开清单向服务端取的，
+ * 漏掉其中一个发起点不会报错，只会表现为「自动刷新一到就把展开的请求收回去」。
+ */
+function trajectoryQuery(
+  recordId: string,
+  mode: 'request' | 'conversation',
+): ModelRequestTrajectoryQuery {
+  return {
+    recordId,
+    mode,
+    ...(mode === 'conversation' ? { expandedRequestIds: [...expandedTrajectoryRequestIds.value] } : {}),
+  }
+}
+
+function updateExpandedTrajectoryRequests(requestIds: string[]) {
+  expandedTrajectoryRequestIds.value = requestIds
+  fetchTrajectory(trajectoryMode.value)
 }
 
 function fetchTrajectory(mode: 'request' | 'conversation') {
   const detail = props.detail
   if (!detail) return
-  emit('trajectory', { recordId: detail.id, mode })
+  emit('trajectory', trajectoryQuery(detail.id, mode))
 }
 
 function inspectRelatedRequest(payload: { recordId: string }) {
@@ -1046,7 +1073,7 @@ function openRelatedRequest(payload: {
   showRequestBody()
   selectedRecordId.value = payload.recordId
   emit('open', { recordId: payload.recordId })
-  emit('trajectory', { recordId: payload.recordId, mode: 'request' })
+  emit('trajectory', trajectoryQuery(payload.recordId, 'request'))
   nextTick(() => {
     if (detailElement.value) detailElement.value.scrollTop = 0
   })
@@ -1063,7 +1090,7 @@ function returnToTrajectory() {
   selectedRecordId.value = state.recordId
   restoreDetailView(state)
   emit('open', { recordId: state.recordId })
-  emit('trajectory', { recordId: state.recordId, mode: state.trajectoryMode })
+  emit('trajectory', trajectoryQuery(state.recordId, state.trajectoryMode))
   applyViewRestore()
 }
 

@@ -32,6 +32,7 @@ function viewSnapshot(recordId = 'request-1'): EvidenceViewSnapshot {
     detailView: 'trajectory',
     bodyView: 'analysis',
     trajectoryMode: 'conversation',
+    expandedTrajectoryRequestIds: [recordId],
     detailScrollTop: 640,
     trajectory: { rowId: 'req:message:contents.0', scrollTop: 1820 },
   }

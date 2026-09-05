@@ -56,6 +56,9 @@ export class FakeModelRequestPort implements ModelRequestPort {
       rows: [],
       promptComposition: [],
       complete: true,
+      granularity: 'evidence' as const,
+      eventTotal: 0,
+      expandedRequestIds: input.expandedRequestIds ?? [],
     }
     return this.invoke('getModelRequestTrajectory', input, trajectory)
   }

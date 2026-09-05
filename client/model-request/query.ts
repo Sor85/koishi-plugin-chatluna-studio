@@ -19,7 +19,11 @@ export type ModelRequestCategory = StudioModelRequestScope['scope']
 
 export type ModelRequestRecordsQuery = ListStudioModelRequestRecordsInput
 export type ModelRequestRecordQuery = GetStudioModelRequestRecordInput
-export type ModelRequestTrajectoryQuery = GetStudioModelRequestRecordInput & { mode: 'request' | 'conversation' }
+export type ModelRequestTrajectoryQuery = GetStudioModelRequestRecordInput & {
+  mode: 'request' | 'conversation'
+  /** 会话账本按请求按需展开：只有这些请求要事件行，其余只取请求边界行。 */
+  expandedRequestIds?: readonly string[]
+}
 
 export interface ModelRequestRecordsPageState {
   hasMore: boolean

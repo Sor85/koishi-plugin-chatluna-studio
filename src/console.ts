@@ -79,7 +79,12 @@ export function registerConsole(console: StudioConsoleRegistrar, options: Regist
   }
   const readTrajectory = async (input: ReadStudioModelRequestTrajectoryInput): Promise<StudioModelRequestTrajectory> => {
     const record = await modelRequests.requireRecord(input.recordId)
-    return buildStudioModelRequestTrajectoryFromStore({ record, mode: input.mode, store: modelRequests })
+    return buildStudioModelRequestTrajectoryFromStore({
+      record,
+      mode: input.mode,
+      store: modelRequests,
+      ...(input.expandedRequestIds ? { expandedRequestIds: input.expandedRequestIds } : {}),
+    })
   }
   const clearRecords = async (): Promise<ClearStudioModelRequestRecordsResult> => ({
     cleared: await modelRequests.clear(),

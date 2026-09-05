@@ -1,4 +1,4 @@
-import { readonly, ref, type DeepReadonly } from 'vue'
+import { markRaw, readonly, ref, shallowRef, type DeepReadonly } from 'vue'
 import type {
   CreatePresetInput,
   DeletePresetInput,
@@ -59,7 +59,14 @@ export function createWorkspaceController(ports: StudioWorkspacePorts) {
   const persistenceState = ref<StudioPersistenceStatus>({ ...defaultFakePersistence })
   const modelRequestRecordsState = ref<StudioModelRequestListItem[]>([])
   const modelRequestRecordState = ref<StudioModelRequestDetail>()
-  const modelRequestTrajectoryState = ref<StudioModelRequestTrajectory>()
+  /**
+   * 轨迹载荷整份替换、从不原地改，因此不进深响应式。
+   *
+   * 一条会话轨迹带着上千条组成分段与上百条账本行；用 `ref` 的话每个被读到的分段和行都要各建
+   * 一个只读代理，而这份数据的唯一变化方式就是被下一次读取整份换掉。浅引用加 `markRaw`
+   * 让「换了一份」照样触发重算，省掉的是那上千个代理。
+   */
+  const modelRequestTrajectoryState = shallowRef<StudioModelRequestTrajectory>()
   const modelRequestFacetsState = ref<StudioModelRequestFacets>(emptyModelRequestFacets)
   const modelRequestRecordsPageState = ref<ModelRequestRecordsPageState>({
     hasMore: false,
@@ -106,7 +113,8 @@ export function createWorkspaceController(ports: StudioWorkspacePorts) {
 
   async function loadModelRequestTrajectory(input: ModelRequestTrajectoryQuery) {
     try {
-      modelRequestTrajectoryState.value = await ports.modelRequest.getModelRequestTrajectory(input)
+      // markRaw：这份载荷只被整份替换，代理它等于为上千条分段各建一个代理却没有任何一次写入。
+      modelRequestTrajectoryState.value = markRaw(await ports.modelRequest.getModelRequestTrajectory(input))
     } catch (error) {
       throw normalizeWorkspaceError(error, '读取模型请求轨迹失败')
     }

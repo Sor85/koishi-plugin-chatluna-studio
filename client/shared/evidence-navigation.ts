@@ -45,6 +45,8 @@ export interface ModelRequestEntryState {
   errorsOnly: boolean
   detailView: 'evidence'
   bodyView: 'analysis'
+  /** 跨视图进入落在单请求详情上，会话账本从全折叠开始，因此恒为空。 */
+  expandedTrajectoryRequestIds: readonly string[]
   /** 这是一次导航选中：列表选择保护随之生效，视图无法遗漏。 */
   navigationSelection: true
   /** 进行态文案；不携带证据定位段时为空。 */
@@ -57,6 +59,8 @@ export interface EvidenceViewSnapshot {
   detailView: 'trajectory' | 'evidence'
   bodyView: 'request' | 'response' | 'analysis'
   trajectoryMode: 'request' | 'conversation'
+  /** 会话账本当时展开了哪几条请求；事件行按请求按需取，缺了它返回后会落回全折叠。 */
+  expandedTrajectoryRequestIds: readonly string[]
   detailScrollTop: number
   trajectory: {
     rowId: string
@@ -145,6 +149,7 @@ export function createEvidenceNavigation() {
       errorsOnly: false,
       detailView: 'evidence',
       bodyView: 'analysis',
+      expandedTrajectoryRequestIds: [],
       navigationSelection: true,
       status: published.evidence ? LOCATING_STATUS : '',
     }

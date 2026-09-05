@@ -255,11 +255,21 @@ export interface StudioModelRequestTrajectoryRow {
 /** 请求组成项的种类：基础证据种类的子集加工具交互聚合，聚合成员由证据种类 module 声明。 */
 export type StudioModelRequestPromptKind = StudioEvidenceCompositionKind
 
+/**
+ * 请求组成图的粒度。
+ *
+ * `evidence` 逐条证据一段，`aggregate` 每请求每种类一段。会话轨迹按分段可辨识度选择，
+ * 判据与阈值由请求组成 module 独占；单请求轨迹恒为逐条证据。
+ */
+export type StudioModelRequestPromptCompositionGranularity = 'evidence' | 'aggregate'
+
 export interface StudioModelRequestPromptCompositionItem {
   kind: StudioModelRequestPromptKind
-  /** 点击组成分段时定位的轨迹行身份；变量片段使用变量证据身份。 */
-  evidenceId: string
+  /** 点击组成分段时定位的轨迹行身份；变量片段使用变量证据身份。聚合粒度下一段覆盖多条证据，因此缺省。 */
+  evidenceId?: string
   characters: number
+  /** 聚合粒度下这一段合并了多少条逐段证据；逐条证据粒度缺省。 */
+  segmentCount?: number
   variableId?: string
   variableName?: string
   requestId?: string
@@ -272,6 +282,11 @@ export interface StudioModelRequestTrajectory {
   rows: readonly StudioModelRequestTrajectoryRow[]
   promptComposition: readonly StudioModelRequestPromptCompositionItem[]
   complete: boolean
+  granularity: StudioModelRequestPromptCompositionGranularity
+  /** 整段轨迹的事件行总数，不含请求边界行。账本按请求展开时 `rows` 只含已展开部分，因此计数另算。 */
+  eventTotal: number
+  /** 已经下发事件行的请求标识；其余请求只有请求边界行。 */
+  expandedRequestIds: readonly string[]
 }
 
 export interface GetStudioModelRequestRecordInput { recordId: string }
@@ -290,6 +305,11 @@ export type ReadStudioModelRequestRecordInput = GetStudioModelRequestRecordInput
 export type ReadStudioModelRequestTrajectoryInput = {
   recordId: string
   mode: 'request' | 'conversation'
+  /**
+   * 会话模式下要下发事件行的请求标识。缺省或空表示只要请求边界行。
+   * 服务端不替调用方补任何一条：补上的那条会永远折不起来。
+   */
+  expandedRequestIds?: readonly string[]
 }
 
 /** 筛选下拉的可选值，由记录库里已经出现过的机器人、会话与模型聚合而成。 */

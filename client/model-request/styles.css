@@ -994,14 +994,10 @@
   overflow: hidden;
 }
 
-.chatluna-studio-model-trajectory-composition-labels,
-.chatluna-studio-model-trajectory-composition-tracks {
+.chatluna-studio-model-trajectory-composition-labels {
   display: grid;
   grid-auto-rows: 14px;
   align-content: center;
-}
-
-.chatluna-studio-model-trajectory-composition-labels {
   padding-right: 6px;
   color: var(--chatluna-studio-muted);
   font-size: var(--chatluna-studio-font-3xs);
@@ -1022,13 +1018,30 @@
   user-select: none;
 }
 
+/* overflow: clip 是焦点层缩放动画的必要条件：被变换放大的后代会算进滚动容器的滚动范围，
+   缩小动画期间视图口会因此长出一条横向滚动条并抖一下。裁到轨道自身的盒子上之后，滚动范围
+   仍然只由轨道宽度（缩放倍率）决定。用 clip 而不是 hidden：后者会把轨道变成滚动容器，
+   横向拖动写的 scrollLeft 会落到它身上而不是视图口。 */
 .chatluna-studio-model-trajectory-composition-tracks {
   position: relative;
   box-sizing: border-box;
   min-width: 100%;
   height: 100%;
   padding-right: 6px;
+  overflow: clip;
   border-left: 1px solid var(--chatluna-studio-border);
+}
+
+/* 焦点层：轨道横轴只铺展开中的那几条请求（判据见 composition-focus.ts）。
+   变换原点必须落在左边缘——scaleX 默认绕中心缩放，那会让窗口两端各偏出半个视图口。
+   轨道的行栅格住在这一层而不是外层：外层要保持「一格 = 整条轨道宽」的滚动内容盒。 */
+.chatluna-studio-model-trajectory-composition-focus {
+  position: relative;
+  display: grid;
+  grid-auto-rows: 14px;
+  align-content: center;
+  height: 100%;
+  transform-origin: 0 0;
 }
 
 .chatluna-studio-model-trajectory-composition-track {
@@ -1036,15 +1049,25 @@
   min-width: 0;
 }
 
+/* 分段右侧那条 1px 的缝。
+   按占比算的间隙（请求组成 module 的那个常量）在放大后与单请求视图逐像素一致，但默认倍率下
+   一条请求只占几十个像素宽，那份间隙折算下来不到半个像素——同一条请求里的几档因此糊成一条
+   实心条。这条缝是几何之外的补充，不随倍率与格宽变化，两种模式共用同一份声明因此不会让两边的
+   读法分叉。background-clip 是必要的：透明边框区域默认仍然画元素自己的背景色，缝会看不出来。
+   box-sizing 必须显式声明：缝要从分段自己的宽度里让出来，落到 content-box 上会把每一段
+   各撑宽 1px，同一格里的分段又互相压住。 */
 .chatluna-studio-model-trajectory-composition-bar {
   position: absolute;
   top: 3px;
-  min-width: 2px;
+  box-sizing: border-box;
+  min-width: 3px;
   height: 8px;
   padding: 0;
   border: 0;
+  border-right: 1px solid transparent;
   border-radius: 1px;
   background: var(--chatluna-studio-role-system);
+  background-clip: padding-box;
 }
 
 .chatluna-studio-model-trajectory-composition-bar.is-user {
@@ -1072,6 +1095,35 @@
   box-shadow:
     0 0 0 1px var(--chatluna-studio-trajectory-layer),
     0 0 0 2px var(--chatluna-studio-accent);
+}
+
+/*
+ * 分段浮层。整条轨道共用一个，因此它挂在组成图容器上而不是每条分段里：
+ * 轨道视口纵向裁切（overflow-y: hidden 是横向滚动的必然结果），挂在视口内的浮层会被裁掉。
+ * 落点由脚本按分段与容器的相对位置写入，这里只负责脱离文档流与外观。
+ */
+.chatluna-studio-model-trajectory-composition-tip {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  max-width: 280px;
+  padding: 6px 10px;
+  border: 1px solid var(--chatluna-studio-border);
+  border-radius: 6px;
+  color: var(--chatluna-studio-text);
+  background: var(--chatluna-studio-surface);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 12%);
+  font-size: var(--chatluna-studio-font-sm);
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.chatluna-studio-model-trajectory-composition-tip span {
+  color: color-mix(in srgb, currentColor 78%, transparent);
+  font-size: var(--chatluna-studio-font-2xs);
 }
 
 .chatluna-studio-model-trajectory-composition-empty {

@@ -1,5 +1,6 @@
 import type {
   StudioModelRequestDetail,
+  StudioModelRequestPromptCompositionGranularity,
   StudioModelRequestPromptCompositionItem,
   StudioModelRequestPromptKind,
   StudioModelRequestRecord,
@@ -14,6 +15,11 @@ import { normalizeEvidencePreviewText } from './evidence-preview-text'
 import { deriveModelRequestVariables, modelRequestVariableStatusLabel } from './model-request-variables'
 import { studioEvidenceAggregate } from './evidence-kind'
 import {
+  aggregateModelRequestComposition,
+  resolveModelRequestCompositionGranularity,
+  type ModelRequestCompositionSlot,
+} from './model-request-composition'
+import {
   countMessageCharacters,
   countToolCallCharacters,
   countToolDefinitionCharacters,
@@ -27,6 +33,8 @@ interface BuildStudioModelRequestTrajectoryOptions {
   mode: 'request' | 'conversation'
   /** 会话模式下同会话的原始记录，按 sequence 正序；缺省表示无法聚合，只呈现当前请求。 */
   conversationRecords?: readonly StudioModelRequestRecord[]
+  /** 会话模式下要下发事件行的请求标识；被读取的那条请求恒为展开。 */
+  expandedRequestIds?: readonly string[]
 }
 
 interface ProjectedRow {
@@ -64,6 +72,7 @@ export async function buildStudioModelRequestTrajectoryFromStore(options: {
   record: StudioModelRequestDetail
   mode: 'request' | 'conversation'
   store?: StudioModelRequestStore
+  expandedRequestIds?: readonly string[]
 }): Promise<StudioModelRequestTrajectory> {
   const conversationRecords = options.mode === 'conversation'
     ? await readStudioModelRequestConversationRecords(options.record, options.store)
@@ -72,6 +81,7 @@ export async function buildStudioModelRequestTrajectoryFromStore(options: {
     record: options.record,
     mode: options.mode,
     ...(conversationRecords ? { conversationRecords } : {}),
+    ...(options.expandedRequestIds ? { expandedRequestIds: options.expandedRequestIds } : {}),
   })
 }
 
@@ -82,9 +92,13 @@ export function buildStudioModelRequestTrajectory(
     ? options.conversationRecords
     : [options.record]
   const records = sourceRecords.map(record => presentModelRequestListItem(record))
+  const expandedRequestIds = resolveExpandedRequestIds(options, sourceRecords)
   const rows: StudioModelRequestTrajectoryRow[] = []
   const promptComposition: StudioModelRequestPromptCompositionItem[] = []
+  const slots: ModelRequestCompositionSlot[] = []
+  const timeSpan = resolveTimeSpan(sourceRecords)
   let index = 1
+  let eventTotal = 0
 
   for (const record of sourceRecords) {
     // 轨迹只负责会话聚合、请求边界、时间与组成统计；协议语义全部来自共享模型证据投影。
@@ -99,6 +113,7 @@ export function buildStudioModelRequestTrajectory(
     const variables = record.requestBody !== undefined && record.presetSnapshots?.length
       ? deriveModelRequestVariables(record.presetSnapshots, projection)
       : []
+    const expanded = expandedRequestIds.has(record.id)
 
     rows.push({
       id: `${record.id}:request`,
@@ -111,22 +126,40 @@ export function buildStudioModelRequestTrajectory(
       status: record.status,
     })
 
+    // 折叠的请求同样要走完投影：事件总数与组成占比是整段轨迹的事实，不随展开与否变化。
+    // 折叠省掉的是行对象与它们的预览文本，也就是账本载荷本身。
     for (const row of projectRequestRows(projection, variables)) {
+      const rowIndex = index++
+      eventTotal += 1
+      if (!expanded) continue
       rows.push({
         id: `${record.id}:${row.evidenceId}`,
-        index: index++,
+        index: rowIndex,
         requestId: record.id,
         source: 'request',
         ...row,
       })
     }
     for (const row of projectResponseRows(projection)) {
-      rows.push({ id: `${record.id}:${row.evidenceId}`, index: index++, requestId: record.id, source: 'response', ...row })
+      const rowIndex = index++
+      eventTotal += 1
+      if (!expanded) continue
+      rows.push({ id: `${record.id}:${row.evidenceId}`, index: rowIndex, requestId: record.id, source: 'response', ...row })
     }
-    for (const item of projectPromptComposition(projection, variables)) {
+    const composition = projectPromptComposition(projection, variables)
+    for (const item of composition) {
       promptComposition.push(options.mode === 'conversation' ? { ...item, requestId: record.id } : item)
     }
+    slots.push({
+      timeShare: timeSpan > 0 ? Math.max(record.durationMs, record.status === 'pending' ? 0 : 1) / timeSpan : 0,
+      segmentCount: composition.length,
+    })
   }
+
+  // 单请求轨迹恒为逐条证据：横轴按占比铺满一整条，分段数也就是这一条请求自己的段数。
+  const granularity = options.mode === 'conversation'
+    ? resolveModelRequestCompositionGranularity(slots)
+    : 'evidence'
 
   return {
     mode: options.mode,
@@ -135,9 +168,51 @@ export function buildStudioModelRequestTrajectory(
       : {}),
     records,
     rows,
-    promptComposition,
+    promptComposition: granularity === 'aggregate'
+      ? aggregateModelRequestComposition(promptComposition)
+      : promptComposition,
     complete: options.mode === 'request' || !options.conversationRecords || sourceRecords.length < CONVERSATION_RECORD_LIMIT,
+    granularity,
+    eventTotal,
+    expandedRequestIds: [...expandedRequestIds],
   }
+}
+
+/**
+ * 哪些请求要下发事件行。
+ *
+ * 单请求模式恒为全展开——账本就是这一条请求的内容，折叠它等于什么都不显示。
+ * 会话模式完全按调用方给的清单下发：一次会话里第 N 条请求的请求体本身就包含前 N 轮历史，
+ * 逐条全量下发会让账本行数按记录数平方增长（两百条记录约十万行）。
+ *
+ * 这里不替调用方补上被读取的那条请求。补上会让它永远折不起来：用户点它的箭头，
+ * 客户端把它从清单里去掉，服务端又原样加回来，界面纹丝不动。默认展开哪一条属于视图状态，
+ * 由详情视图在进入账本时播种一次，因此它既是默认值也可以被折叠。
+ */
+function resolveExpandedRequestIds(
+  options: BuildStudioModelRequestTrajectoryOptions,
+  sourceRecords: readonly StudioModelRequestRecord[],
+): Set<string> {
+  if (options.mode === 'request') return new Set(sourceRecords.map(({ id }) => id))
+  const requested = new Set(options.expandedRequestIds ?? [])
+  return new Set(sourceRecords.filter(({ id }) => requested.has(id)).map(({ id }) => id))
+}
+
+/**
+ * 整段轨迹的时间跨度，与视图铺时间轴用的口径一致：最早开始到最晚结束，至少 1 毫秒。
+ * 粒度判据要按时间槽占比算，因此跨度必须在这里量一次，而不是让视图算完再回传。
+ */
+function resolveTimeSpan(records: readonly StudioModelRequestRecord[]): number {
+  let start = Number.POSITIVE_INFINITY
+  let end = Number.NEGATIVE_INFINITY
+  for (const record of records) {
+    const recordStart = Date.parse(record.createdAt)
+    if (Number.isNaN(recordStart)) continue
+    start = Math.min(start, recordStart)
+    end = Math.max(end, recordStart + Math.max(record.durationMs, 1))
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0
+  return Math.max(end - start, 1)
 }
 
 function projectRequestRows(

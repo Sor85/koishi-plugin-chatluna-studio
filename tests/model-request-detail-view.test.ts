@@ -31,6 +31,7 @@ describe('模型请求详情页签与轨迹模式', () => {
     view.bodyView.value = 'response'
     view.responseView.value = 'json'
     view.headersExpanded.value = true
+    view.expandedTrajectoryRequestIds.value = ['request-7']
 
     view.showNewDetail()
 
@@ -39,6 +40,8 @@ describe('模型请求详情页签与轨迹模式', () => {
     expect(view.responseView.value).toBe('content')
     expect(view.headersExpanded.value).toBe(false)
     expect(view.trajectoryMode.value).toBe('request')
+    // 展开清单同时是读取参数：留着上一条会话的请求标识会拿去向服务端取根本不同会话的事件行。
+    expect(view.expandedTrajectoryRequestIds.value).toEqual([])
   })
 
   it('导航到达只摆页签，不清掉响应原文页签与请求头折叠', () => {
@@ -73,6 +76,7 @@ describe('模型请求详情页签与轨迹模式', () => {
     const view = createModelRequestDetailView()
     view.detailView.value = 'trajectory'
     view.bodyView.value = 'response'
+    view.expandedTrajectoryRequestIds.value = ['request-3', 'request-9']
     const snapshot = view.snapshot()
 
     view.showNewDetail()
@@ -82,6 +86,41 @@ describe('模型请求详情页签与轨迹模式', () => {
     expect(view.detailView.value).toBe('trajectory')
     expect(view.bodyView.value).toBe('response')
     expect(view.trajectoryMode.value).toBe('conversation')
+    // 打开原始请求再返回时展开清单必须一起回来，否则账本落回全折叠，返回定位没有行可停。
+    expect(view.expandedTrajectoryRequestIds.value).toEqual(['request-3', 'request-9'])
+  })
+
+  it('快照与恢复各自复制展开清单，恢复后改动不会回写进快照', () => {
+    const view = createModelRequestDetailView()
+    view.expandedTrajectoryRequestIds.value = ['request-3']
+    const snapshot = view.snapshot()
+
+    view.restore(snapshot)
+    view.expandedTrajectoryRequestIds.value = [...view.expandedTrajectoryRequestIds.value, 'request-4']
+
+    expect(snapshot.expandedTrajectoryRequestIds).toEqual(['request-3'])
+  })
+
+  it('进入会话账本时播种当前请求，已有展开清单时不动它', () => {
+    const view = createModelRequestDetailView()
+
+    view.expandTrajectoryRequestByDefault('request-1')
+    expect(view.expandedTrajectoryRequestIds.value).toEqual(['request-1'])
+
+    // 从原始请求返回时清单已由快照恢复，播种不能把它顶掉。
+    view.expandedTrajectoryRequestIds.value = ['request-7', 'request-9']
+    view.expandTrajectoryRequestByDefault('request-1')
+    expect(view.expandedTrajectoryRequestIds.value).toEqual(['request-7', 'request-9'])
+  })
+
+  it('播种是默认值而不是恒定值：折叠掉唯一展开的请求后清单保持为空', () => {
+    const view = createModelRequestDetailView()
+    view.expandTrajectoryRequestByDefault('request-1')
+
+    // 用户点箭头折叠它——播种过一次之后不会在同一次浏览里被重新加回来，否则它永远折不下来。
+    view.expandedTrajectoryRequestIds.value = []
+
+    expect(view.expandedTrajectoryRequestIds.value).toEqual([])
   })
 
   it('请求头折叠可来回切换，折叠态报出项数', () => {
