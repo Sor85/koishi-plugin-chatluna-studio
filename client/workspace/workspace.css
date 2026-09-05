@@ -1,8 +1,12 @@
-html,
-body,
-#app {
-  min-height: 100%;
-}
+/* 本层禁止给 html / body / #app 写任何尺寸声明（详见 docs/adr/0026，有守卫测试）。
+   控制台自己的 `body { min-height: 100vh }` 是所有插件页面共用的高度地基，插件在这里写同名声明
+   会盖掉它（同特异性，后加载者胜）。写成 `min-height: 100%` 时百分比要拿 html 的高度求值，而
+   html 是 auto——百分比 min-height 在 auto 高度的包含块上退化成 auto，body 因此彻底失去高度下限
+   塌成 0，#app 跟着塌。
+   本插件页面取 100vh 不受影响，所以自查时看不出问题；但同一个控制台里其他插件的页面根容器凡是靠
+   `position: absolute; inset: 0` 或百分比高度撑开，就会拿到 0 高度，配上 overflow: hidden 后整页
+   内容被裁掉——不报错，表现为「别的插件页面打开是一片白」。
+   本工作台需要的满视口高度由 .chatluna-studio-page 的 100vh 提供，不需要地基参与。 */
 
 /* Koishi 的布局容器以 --footer-height 预留全局状态栏空间；本工作台需要完整视口，
    因此同时清零预留高度并隐藏同级 footer，避免只隐藏底栏后仍留下空白。 */

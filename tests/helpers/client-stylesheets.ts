@@ -24,3 +24,20 @@ export function listClientStylesheets(directory = 'client'): string[] {
 export function readClientStylesheets(): string[] {
   return listClientStylesheets().map((path) => readFileSync(resolve(path), 'utf8'))
 }
+
+/**
+ * 单文件组件里 `<style>` 块的源码，标注成 `路径#序号`。
+ *
+ * 这一面不在 `listClientStylesheets()` 里：那份只扫 `.css`。scoped 块编译后仍然进同一张产物表，
+ * 选择器写错一样会漏到宿主页面上，所以凡是判定「有没有越出本插件表面」的守卫都要把组件样式也扫上，
+ * 否则违规规则藏在 `.vue` 里永远拦不住。
+ */
+export function readClientStyleBlocks(directory = 'client'): { path: string, source: string }[] {
+  return readdirSync(resolve(directory), { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return readClientStyleBlocks(path)
+    if (!entry.name.endsWith('.vue')) return []
+    return [...readFileSync(resolve(path), 'utf8').matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+      .map((match, index) => ({ path: `${path}#${index}`, source: match[1]! }))
+  }).sort((left, right) => left.path.localeCompare(right.path))
+}
