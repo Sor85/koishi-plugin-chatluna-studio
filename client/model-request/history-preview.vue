@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { IconChevronDown } from '@tabler/icons-vue'
+import { IconChevronDown, IconCornerUpLeft } from '@tabler/icons-vue'
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropType, type VNode } from 'vue'
 import { Badge } from '#client/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '#client/components/ui/tooltip'
@@ -248,14 +248,22 @@ const HistoryQuote = defineComponent({
   },
 })
 
-function renderHistoryQuote(message: ModelRequestHistoryMessage): VNode {
-  return h('blockquote', { class: 'chatluna-studio-message-quote chatluna-studio-model-history-quote' }, [
-    h('strong', { class: 'chatluna-studio-message-quote-title' }, [
-      message.name || '引用消息',
-      message.id ? h('span', { class: 'chatluna-studio-model-history-quote-id' }, ` · ${message.id}`) : undefined,
+/**
+ * 被引用的那条消息。
+ *
+ * 标题与被引正文必须各占一行：两者原先都是 blockquote 的行内子节点，在 DOM 里紧邻，
+ * 渲染出来是「名称 · ID被引正文」连成一句，读者无从判断哪一段才是引用。
+ * 嵌套引用逐层递归，深度写进 data 属性供样式逐层减弱。
+ */
+function renderHistoryQuote(message: ModelRequestHistoryMessage, depth = 0): VNode {
+  return h('blockquote', { class: 'chatluna-studio-model-history-quote', 'data-quote-depth': depth }, [
+    h('span', { class: 'chatluna-studio-model-history-quote-head' }, [
+      h(IconCornerUpLeft, { size: 12, class: 'chatluna-studio-model-history-quote-icon', 'aria-hidden': 'true' }),
+      h('strong', { class: 'chatluna-studio-model-history-quote-title' }, message.name || '引用消息'),
+      message.id ? h('span', { class: 'chatluna-studio-model-history-quote-id' }, message.id) : undefined,
     ]),
-    message.quote ? renderHistoryQuote(message.quote) : undefined,
-    h('span', message.content || '（空消息）'),
+    message.quote ? renderHistoryQuote(message.quote, depth + 1) : undefined,
+    h('span', { class: 'chatluna-studio-model-history-quote-content' }, message.content || '（空消息）'),
   ])
 }
 </script>

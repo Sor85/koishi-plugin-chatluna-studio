@@ -7,6 +7,9 @@
   --chatluna-studio-role-response: #0f766e;
   --chatluna-studio-role-tool: #c46b00;
   --chatluna-studio-role-tool-interaction: #8f5aa8;
+  /* 历史引用块的强调条与底色。中性灰蓝，避免和上面这套角色色抢读者注意力：
+     引用是被回复的上下文，不是一条独立证据。 */
+  --chatluna-studio-model-history-quote-accent: #94a3b8;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
   min-width: 0;
@@ -23,6 +26,7 @@
   --chatluna-studio-role-response: #5eead4;
   --chatluna-studio-role-tool: #bf812f;
   --chatluna-studio-role-tool-interaction: #a87bb8;
+  --chatluna-studio-model-history-quote-accent: #8b98ad;
 }
 
 .chatluna-studio-model-request-header,
@@ -2406,6 +2410,8 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   transform: rotate(180deg);
 }
 .chatluna-studio-model-history-message {
+  /* 正文与引用块共用同一条列宽：引用块属于这条消息，宽出去就会读成独立的一段。 */
+  --chatluna-studio-model-history-line-width: min(78%, 760px);
   display: grid;
   gap: 7px;
   min-width: 0;
@@ -2417,7 +2423,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   align-items: flex-start;
   flex-direction: column;
   gap: 6px;
-  width: min(78%, 760px);
+  width: var(--chatluna-studio-model-history-line-width);
   min-width: 0;
 }
 .chatluna-studio-model-history-message.is-bot { justify-items: end; }
@@ -2425,8 +2431,9 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-meta { justify-content: flex-end; }
 .chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-content { text-align: right; }
 .chatluna-studio-model-history-message.is-bot > .chatluna-studio-model-history-quote {
-  border-right: 3px solid rgb(148 163 184 / 70%);
+  border-right: 3px solid var(--chatluna-studio-model-history-quote-accent);
   border-left: 0;
+  border-radius: 8px 3px 3px 8px;
   text-align: right;
 }
 .chatluna-studio-model-history-meta {
@@ -2490,30 +2497,83 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-content-line.is-single-visual-line {
   text-align: right;
 }
-.chatluna-studio-model-history-quote.chatluna-studio-message-quote {
-  width: min(100%, 620px);
+/* 引用块承载「这条消息在回复谁」。抽离自 sandbox 时只搬来了 is-bot 的镜像规则，
+   基础规则留在了原仓库：没有强调条、没有内边距、底色几乎与卡片同色，读者看不出是引用。
+   下面这组规则把三件事补齐——侧边强调条、独立底色、标题与被引正文分行。 */
+.chatluna-studio-model-history-quote {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  width: fit-content;
+  max-width: var(--chatluna-studio-model-history-line-width);
   margin: 0;
+  padding: 7px 11px;
+  border-left: 3px solid var(--chatluna-studio-model-history-quote-accent);
+  border-radius: 3px 8px 8px 3px;
   color: var(--chatluna-studio-muted);
-  background: var(--chatluna-studio-surface-muted);
+  background: color-mix(in srgb, var(--chatluna-studio-model-history-quote-accent) 15%, var(--chatluna-studio-surface));
+  font-size: var(--chatluna-studio-font-sm);
+  line-height: 1.5;
+  text-align: left;
 }
-/* 聊天消息中的引用为紧凑单行摘要；模型请求历史承担证据阅读，正文不能继承省略号裁切。 */
-.chatluna-studio-model-history-quote.chatluna-studio-message-quote > span {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: pre-wrap;
+.chatluna-studio-model-history-quote-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
-.chatluna-studio-model-history-quote .chatluna-studio-message-quote-title { color: var(--chatluna-studio-text); }
-.chatluna-studio-model-history-quote .chatluna-studio-model-history-quote {
-  width: 100%;
-  margin: 3px 0;
+.chatluna-studio-model-history-quote-icon {
+  flex: 0 0 auto;
+  color: var(--chatluna-studio-model-history-quote-accent);
+}
+.chatluna-studio-model-history-quote-title {
+  color: var(--chatluna-studio-text);
+  font-size: var(--chatluna-studio-font-xs);
+  font-weight: 600;
 }
 .chatluna-studio-model-history-quote-id {
   color: var(--chatluna-studio-muted);
+  font-family: var(--chatluna-studio-font-mono);
+  font-size: var(--chatluna-studio-font-2xs);
   font-weight: 400;
 }
+/* 聊天消息中的引用为紧凑单行摘要；模型请求历史承担证据阅读，正文不能继承省略号裁切。 */
+.chatluna-studio-model-history-quote-content {
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: pre-wrap;
+}
+/* 嵌套引用不再叠一层底色：同色块层层套会糊成一片，只留强调条表示层级。 */
+.chatluna-studio-model-history-quote .chatluna-studio-model-history-quote {
+  width: 100%;
+  max-width: 100%;
+  margin: 2px 0;
+  padding: 3px 0 3px 9px;
+  border-radius: 0;
+  background: transparent;
+}
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-quote-head {
+  flex-direction: row-reverse;
+}
+/* 图标是「回复」指向标：右侧气泡里必须朝向消息本体，否则箭头指向卡片外。 */
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-quote-icon {
+  transform: scaleX(-1);
+}
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-quote {
+  justify-items: end;
+  text-align: right;
+}
+.chatluna-studio-model-history-message.is-bot .chatluna-studio-model-history-quote .chatluna-studio-model-history-quote {
+  padding: 3px 9px 3px 0;
+  border-right: 3px solid var(--chatluna-studio-model-history-quote-accent);
+  border-left: 0;
+}
 @container (max-width: 680px) {
-  .chatluna-studio-model-history-line { width: min(100%, 560px); }
+  .chatluna-studio-model-history-message { --chatluna-studio-model-history-line-width: min(100%, 560px); }
 }
 @container (max-width: 520px) {
   .chatluna-studio-model-history-meta .studio-badge { max-width: min(100%, 72vw); }
