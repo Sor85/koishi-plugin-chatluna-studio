@@ -154,6 +154,13 @@
                 :occurrence="occurrenceForMessage(message.evidenceId)"
                 :force-expanded="isTextForceExpanded(modelAnalysisTargetId(message.evidenceId))"
               />
+              <!-- 精确 occurrence 优先：它的范围是按正文的 UTF-16 偏移量算的，只有原文那一棵
+                   pre 能标出来，结构视图里没有对应位置。 -->
+              <section v-else-if="messagePayloadTree(message)" class="chatluna-studio-model-analysis-section">
+                <div class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
+                  <ModelRequestJsonTree :node="messagePayloadTree(message)!" :open="true" :root="true" />
+                </div>
+              </section>
               <AnalysisContentParts
                 v-else-if="message.contentParts.length"
                 :parts="message.contentParts"
@@ -183,7 +190,11 @@
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(call.evidenceId) }"
                 >
                   <div><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
+                  <div v-if="callArgumentsTree(call)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
+                    <ModelRequestJsonTree :node="callArgumentsTree(call)!" :open="true" :root="true" :strings-expanded="true" />
+                  </div>
                   <AnalysisTextBlock
+                    v-else
                     :value="call.arguments || '{}'"
                     :search-query="normalizedSearch"
                     :force-expanded="isTextForceExpanded(modelAnalysisTargetId(call.evidenceId))"
@@ -367,14 +378,23 @@
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(call.evidenceId) }"
                 >
                   <div><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
-                  <div class="chatluna-studio-model-analysis-tool-schema chatluna-studio-model-request-json-viewer">
+                  <!-- 参数解析不出结构时退回原文：模型流式吐出的参数可能被截断，硬套 JSON 树只会
+                       画出一棵空树，把「参数不完整」这条事实藏掉。 -->
+                  <div v-if="callArgumentsTree(call)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
                     <ModelRequestJsonTree
-                      :node="toolCallArgumentsJsonTree(call)"
+                      :node="callArgumentsTree(call)!"
                       :open="true"
                       :root="true"
                       :strings-expanded="true"
                     />
                   </div>
+                  <AnalysisTextBlock
+                    v-else
+                    :value="call.arguments || '{}'"
+                    :search-query="normalizedSearch"
+                    :force-expanded="isTextForceExpanded(modelAnalysisTargetId(call.evidenceId))"
+                    compact
+                  />
                   <button v-if="hasTool(call.name)" type="button" class="chatluna-studio-model-analysis-link" @click="locateTool(call.name)">
                     查看工具定义
                   </button>
@@ -390,7 +410,11 @@
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(result.evidenceId) }"
                 >
                   <div><strong><AnalysisHighlightedText :value="result.name || '工具结果'" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="result.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
+                  <div v-if="toolResultTree(result)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
+                    <ModelRequestJsonTree :node="toolResultTree(result)!" :open="true" :root="true" />
+                  </div>
                   <AnalysisTextBlock
+                    v-else
                     :value="result.content"
                     :search-query="normalizedSearch"
                     :force-expanded="isTextForceExpanded(modelAnalysisTargetId(result.evidenceId))"
@@ -522,8 +546,10 @@ import {
   type ModelConversationMessage,
   type ModelConversationTool,
   type ModelConversationToolCall,
+  type ModelConversationToolResult,
   type ModelRequestConversation,
 } from './conversation'
+import { resolveModelRequestToolPayload } from './tool-payload'
 import { studioEvidenceLabels, type StudioEvidenceKind } from '../../src/evidence-kind'
 import { modelRequestVariableStatusLabel } from '../../src/model-request-variables'
 import type { StudioModelRequestDetail, StudioModelRequestStatus, StudioModelRequestTrajectory, StudioModelRequestVariable } from '../../src/types'
@@ -864,8 +890,68 @@ function responseJsonTree(): ModelRequestJsonNode {
   return cachedJsonTree('response', 'response', () => response.value.raw)
 }
 
-function toolCallArgumentsJsonTree(call: ModelConversationToolCall): ModelRequestJsonNode {
-  return cachedJsonTree(`arguments:${call.evidenceId}`, 'arguments', () => parseAnalysisJson(call.arguments))
+/**
+ * 一段工具载荷的结构树，解析不出结构时给 undefined 让调用处退回原文。
+ *
+ * 树按证据身份缓存在同一张表里：判定要在每次重渲染时给模板一个稳定引用，
+ * 每次现算会让 JSON 查看器的展开态随搜索输入一起被丢掉。
+ */
+function toolPayloadTree(
+  cacheKey: string,
+  rootKey: string,
+  value: string | undefined,
+  revealText = false,
+): ModelRequestJsonNode | undefined {
+  // 退回原文的判定必须先做：缓存只存树，命中搜索时读缓存会把已经建好的那棵又摆回来。
+  if (resolveModelRequestToolPayload(value, { revealText }).kind !== 'json') return undefined
+  const cached = jsonTrees.get(cacheKey)
+  if (cached) return cached
+  const payload = resolveModelRequestToolPayload(value)
+  if (payload.kind !== 'json') return undefined
+  const tree = buildModelRequestJsonTree(payload.value, rootKey)
+  jsonTrees.set(cacheKey, tree)
+  return tree
+}
+
+function callArgumentsTree(call: ModelConversationToolCall): ModelRequestJsonNode | undefined {
+  return toolPayloadTree(
+    `arguments:${call.evidenceId}`,
+    'arguments',
+    call.arguments,
+    payloadMatchesSearch(call.arguments),
+  )
+}
+
+function toolResultTree(result: ModelConversationToolResult): ModelRequestJsonNode | undefined {
+  return toolPayloadTree(
+    `result:${result.evidenceId}`,
+    'result',
+    result.content,
+    payloadMatchesSearch(result.content),
+  )
+}
+
+/** 当前查询词是否落在这段载荷里。命中的载荷退回原文，让高亮标出具体位置。 */
+function payloadMatchesSearch(value: string | undefined) {
+  const query = normalizedSearch.value
+  if (!query || !value) return false
+  return value.toLocaleLowerCase('zh-CN').includes(query)
+}
+
+/**
+ * 请求里携带的工具结果消息同样按结构显示。
+ *
+ * 它在证据投影里是一条 tool 角色的消息，正文就是上一轮工具返回的那段 JSON；
+ * 只有工具结果这一档走这条路，其余角色的正文是自然语言，套上结构树反而更难读。
+ */
+function messagePayloadTree(message: ModelConversationMessage): ModelRequestJsonNode | undefined {
+  if (message.kind !== 'tool-result') return undefined
+  return toolPayloadTree(
+    `message-payload:${message.evidenceId}`,
+    'result',
+    message.content,
+    payloadMatchesSearch(message.content),
+  )
 }
 
 function toolParametersJsonTree(tool: ModelConversationTool): ModelRequestJsonNode {
@@ -973,15 +1059,6 @@ function statusLabel(status: StudioModelRequestStatus) {
   if (status === 'pending') return '进行中'
   if (status === 'error') return '错误'
   return '已完成'
-}
-
-function parseAnalysisJson(value: string | undefined) {
-  if (!value) return {}
-  try {
-    return JSON.parse(value)
-  } catch {
-    return value
-  }
 }
 
 const responseFormatLabel = computed(() => response.value.format?.toUpperCase() || response.value.status.toUpperCase())

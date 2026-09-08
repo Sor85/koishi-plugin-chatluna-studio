@@ -2528,6 +2528,20 @@
   padding: 12px;
 }
 
+/*
+ * 工具载荷的结构视图。
+ *
+ * 与工具 Schema 同一副几何，但要额外压住高度：一次搜索的返回值可以有几十条结果，整棵树摊开时
+ * 会把整张卡片顶到几屏高，把它后面的消息全部推出视野。超过这个高度就在载荷内部滚动，卡片本身
+ * 仍然保持可扫读的高度。
+ */
+.chatluna-studio-model-analysis-tool-payload.chatluna-studio-model-request-json-viewer {
+  min-height: 0;
+  max-height: 420px;
+  padding: 12px;
+  overscroll-behavior: contain;
+}
+
 @container (max-width: 680px) {
   .chatluna-studio-model-analysis-main { grid-template-columns: 190px minmax(0, 1fr); }
 }

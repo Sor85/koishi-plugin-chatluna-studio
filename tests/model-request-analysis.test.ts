@@ -555,13 +555,44 @@ describe('模型请求分析展示模型', () => {
     expect(styles).toMatch(/\.chatluna-studio-model-analysis-tool-schema\.chatluna-studio-model-request-json-viewer \{[^}]*min-height: 0;[^}]*padding: 12px;/s)
   })
 
-  it('响应工具调用参数使用请求页 JSON 树，而不是纯文本', () => {
+  /**
+   * 工具载荷（工具调用参数、工具结果、请求里携带的工具结果消息）默认走 JSON 树。
+   *
+   * 三处都要接线，而漏掉一处不会报错：那一处的载荷会继续挤成一行、字符串里的换行仍停在 `\n`
+   * 转义上，只在肉眼比对另外两处时才看得出来。`v-else` 分支同样是契约的一部分——截断的参数与
+   * 纯文本结果必须仍能按原文读到。
+   */
+  it('三处工具载荷默认按结构显示，解析不出结构时退回原文', () => {
     const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
-    const responseSection = view.slice(view.indexOf('response.toolCalls.length'))
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
 
-    expect(responseSection).toContain(':node="toolCallArgumentsJsonTree(call)"')
-    expect(view).toContain("cachedJsonTree(`arguments:${call.evidenceId}`, 'arguments', () => parseAnalysisJson(call.arguments))")
-    expect(responseSection).not.toContain(':value="call.arguments || \'{}\'"')
+    for (const accessor of ['callArgumentsTree(call)', 'toolResultTree(result)']) {
+      expect(view).toContain(`v-if="${accessor}"`)
+      expect(view).toContain(`:node="${accessor}!"`)
+    }
+    // 工具结果消息排在精确 occurrence 之后：occurrence 的范围按正文偏移量算，只有原文能标出来。
+    expect(view).toContain('v-else-if="messagePayloadTree(message)"')
+    expect(view).toContain(':node="messagePayloadTree(message)!"')
+    expect(view).toContain('class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer"')
+    // 请求侧与响应侧的工具调用各有一个原文退路，工具结果一个，合计三处 v-else。
+    expect(view.match(/<AnalysisTextBlock\s+v-else(?!-)/g)).toHaveLength(3)
+    expect(view).not.toContain('parseAnalysisJson')
+    expect(styles).toMatch(/\.chatluna-studio-model-analysis-tool-payload\.chatluna-studio-model-request-json-viewer \{[^}]*max-height: 420px;/s)
+  })
+
+  /**
+   * 搜索命中的载荷退回原文。
+   *
+   * 命中高亮由正文那棵 pre 画出来，结构树里没有 `<mark>`；不退回原文，命中的卡片会一边不被静音、
+   * 一边看不出命中在哪。
+   */
+  it('搜索命中的工具载荷退回原文', () => {
+    const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+
+    expect(view).toContain('payloadMatchesSearch(call.arguments)')
+    expect(view).toContain('payloadMatchesSearch(result.content)')
+    expect(view).toContain('payloadMatchesSearch(message.content)')
+    expect(view).toMatch(/resolveModelRequestToolPayload\(value, \{ revealText \}\)\.kind !== 'json'/)
   })
 
   /**
