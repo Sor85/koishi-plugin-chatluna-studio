@@ -168,6 +168,13 @@
   border-radius: 15px 15px 0 0;
 }
 
+.chatluna-studio-model-request-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .chatluna-studio-model-request-list-toolbar h2 {
   margin: 0;
   color: var(--chatluna-studio-text);
@@ -1404,6 +1411,122 @@
   .chatluna-studio-model-trajectory-kind {
     min-width: 54px;
   }
+}
+
+/* 容量水位环。条数与体积各自是一道独立上限，任一超出即从最旧记录开始丢弃；
+   两道各占一环（外环体积、内环条数），「条数远未到上限却已在丢弃」才有据可查。
+   尺寸对齐顶栏 16px 图标，颜色走正文/次要文字，不占用强调色。 */
+.chatluna-studio-model-request-capacity {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.chatluna-studio-model-request-capacity:focus-visible {
+  outline: 2px solid var(--chatluna-studio-text);
+  outline-offset: 2px;
+}
+
+.chatluna-studio-model-request-capacity svg {
+  width: 16px;
+  height: 16px;
+  /* 弧从十二点方向起画；SVG 的 0 度在三点方向。 */
+  transform: rotate(-90deg);
+}
+
+.chatluna-studio-model-request-capacity circle {
+  fill: none;
+  stroke-width: 3.5;
+}
+
+.chatluna-studio-model-request-capacity-track {
+  stroke: var(--chatluna-studio-border);
+}
+
+.chatluna-studio-model-request-capacity-arc {
+  stroke: var(--chatluna-studio-text);
+  stroke-linecap: round;
+  transition: stroke-dasharray 240ms ease;
+}
+
+.chatluna-studio-model-request-capacity-arc.is-records {
+  stroke: var(--chatluna-studio-muted);
+}
+
+.chatluna-studio-model-request-capacity.is-near-limit .chatluna-studio-model-request-capacity-arc {
+  stroke: #b91c1c;
+}
+
+.chatluna-studio-model-request-capacity.is-near-limit .chatluna-studio-model-request-capacity-arc.is-records {
+  stroke: color-mix(in srgb, #b91c1c 58%, var(--chatluna-studio-muted));
+}
+
+.chatluna-studio-model-request-capacity-tip {
+  width: max-content;
+  padding: 8px 12px;
+}
+
+.chatluna-studio-model-request-capacity-metrics {
+  display: grid;
+  grid-template-columns: 8px auto auto auto;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: baseline;
+}
+
+.chatluna-studio-model-request-capacity-metrics strong {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.chatluna-studio-model-request-capacity-metrics strong.is-near-limit {
+  color: #b91c1c;
+}
+
+.chatluna-studio-model-request-capacity-max {
+  color: var(--chatluna-studio-muted, #7a8494);
+  font-variant-numeric: tabular-nums;
+}
+
+.chatluna-studio-model-request-capacity-swatch {
+  width: 8px;
+  height: 8px;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--chatluna-studio-text, #202938);
+}
+
+.chatluna-studio-model-request-capacity-swatch.is-records {
+  background: var(--chatluna-studio-muted, #7a8494);
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-capacity.is-near-limit .chatluna-studio-model-request-capacity-arc {
+  stroke: #fca5a5;
+}
+
+.chatluna-studio-workspace[data-color-mode="dark"] .chatluna-studio-model-request-capacity.is-near-limit .chatluna-studio-model-request-capacity-arc.is-records {
+  stroke: color-mix(in srgb, #fca5a5 58%, var(--chatluna-studio-muted));
+}
+
+/* Tooltip 经 portal 挂到 body，工作区的颜色令牌传不进去；暗色跟随 body 上的配色属性。 */
+body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-capacity-swatch {
+  background: #edf2f7;
+}
+
+body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-capacity-max {
+  color: #a1a1aa;
+}
+
+body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-capacity-swatch.is-records {
+  background: #a1a1aa;
+}
+
+body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-capacity-metrics strong.is-near-limit {
+  color: #fca5a5;
 }
 
 .chatluna-studio-model-request-more {

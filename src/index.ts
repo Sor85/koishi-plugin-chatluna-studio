@@ -3,7 +3,7 @@ import { archiveChatLunaModelRequestError } from './chatluna/error'
 import { ChatLunaSessionTracker } from './chatluna/session-tracker'
 import { linkChatLunaUsageRequest, type ChatLunaUsageLookup } from './chatluna/usage'
 import { registerConsole } from './console'
-import { DEFAULT_MODEL_REQUEST_RECORD_LIMIT, StudioModelRequestStore, type StudioModelRequestPersistence } from './model-request'
+import { DEFAULT_MODEL_REQUEST_RECORD_LIMIT, DEFAULT_MODEL_REQUEST_RECORD_MAX_BYTES, StudioModelRequestStore, type StudioModelRequestPersistence } from './model-request'
 import { installModelRequestCollector, resolveChatLunaPluginClass } from './model-request-collector'
 import { KoishiDatabaseModelRequestPersistence, registerStudioModelRequestModel } from './persistence'
 import { PresetRuntimeSnapshotTracker, StudioPresetService } from './presets'
@@ -51,15 +51,22 @@ export const inject = {
 export interface Config extends StudioAppearance {
   persistenceMode: StudioPersistenceMode
   modelRequestRecordLimit: number
+  modelRequestRecordMaxMegabytes: number
 }
+
+/** 字节上限以 MB 暴露给配置页；内部仍按字节比较，换算只发生在这一处。 */
+const MEGABYTE = 1024 * 1024
+const DEFAULT_MODEL_REQUEST_RECORD_MAX_MEGABYTES = DEFAULT_MODEL_REQUEST_RECORD_MAX_BYTES / MEGABYTE
 
 export const Config: Schema<Config> = Schema.object({
   persistenceMode: Schema.union([
     Schema.const('memory').description('服务端内存'),
     Schema.const('database').description('Koishi Database'),
   ]).default('database').role('radio').description('模型请求记录的存储方式。内存模式重启后记录清空'),
-  modelRequestRecordLimit: Schema.number().min(1).default(DEFAULT_MODEL_REQUEST_RECORD_LIMIT)
-    .description('保留的模型请求记录条数上限，超出后从最旧记录开始丢弃'),
+  modelRequestRecordLimit: Schema.number().min(1).step(1).default(DEFAULT_MODEL_REQUEST_RECORD_LIMIT)
+    .description('模型请求记录条数上限。超出后从最旧记录开始丢弃，与体积上限同时生效'),
+  modelRequestRecordMaxMegabytes: Schema.number().min(1).step(1).default(DEFAULT_MODEL_REQUEST_RECORD_MAX_MEGABYTES)
+    .description('模型请求记录体积上限（MB）。超出后从最旧记录开始丢弃，与条数上限同时生效。单条记录含完整请求体与响应原文，长上下文请求可达数百 KB'),
   studioColorMode: Schema.union([
     Schema.const('auto').description('自动'),
     Schema.const('light').description('明亮'),
@@ -99,6 +106,7 @@ export function apply(ctx: Context, config: Config) {
     const modelRequests = new StudioModelRequestStore({
       ...(persistence ? { persistence } : {}),
       maxRecords: config.modelRequestRecordLimit,
+      maxBytes: config.modelRequestRecordMaxMegabytes * MEGABYTE,
     })
     const presetSnapshots = new PresetRuntimeSnapshotTracker(inner)
     const sessions = new ChatLunaSessionTracker(inner, {

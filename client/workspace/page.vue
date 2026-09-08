@@ -48,6 +48,7 @@
           :use-q-q-avatars="model.useQQAvatars"
           :has-more="model.hasMore"
           :next-cursor="model.nextCursor"
+          :capacity="model.capacity"
           :loading="model.loading"
           :detail-loading="model.detailLoading"
           :error="model.error"

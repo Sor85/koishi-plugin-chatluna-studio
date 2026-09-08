@@ -71,6 +71,7 @@ export function createStudioWorkspaceShell(options: StudioWorkspaceShellOptions)
     facets: controller.modelRequestFacets.value,
     hasMore: controller.modelRequestRecordsPage.value.hasMore,
     nextCursor: controller.modelRequestRecordsPage.value.nextCursor,
+    capacity: controller.modelRequestRecordsPage.value.capacity,
     loading: modelRequestGate.loading.list.value,
     detailLoading: modelRequestGate.loading.detail.value,
     error: modelRequestGate.error.value,

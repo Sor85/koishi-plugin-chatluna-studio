@@ -9,7 +9,7 @@ import {
 import { createModelRequestEnterRefresh, createModelRequestLiveRefresh, MODEL_REQUEST_LIVE_REFRESH_INTERVAL_MS } from '../client/model-request/live-refresh'
 
 describe('Studio 模型请求工作台', () => {
-  it('页面入口与装配：侧栏切到独立视图，页面只传筛选可选值与访问计数，不传容量上限', () => {
+  it('页面入口与装配：侧栏切到独立视图，页面传筛选可选值、访问计数与容量水位', () => {
     const pageSource = readFileSync(resolve('client/workspace/page.vue'), 'utf8')
     const workspaceSource = readFileSync(resolve('client/model-request/workspace.vue'), 'utf8')
 
@@ -17,9 +17,12 @@ describe('Studio 模型请求工作台', () => {
     expect(pageSource).toContain('<ModelRequestWorkspace')
     expect(pageSource).toContain(':facets="model.facets"')
     expect(pageSource).toContain(':visit-key="shell.modelRequestVisitKey.value"')
-    expect(pageSource).not.toContain(':capacity=')
-    expect(workspaceSource).not.toContain('capacityText')
-    expect(workspaceSource).not.toContain('maxRecords')
+    // 条数与体积是两道独立上限，任一超出即丢弃最旧记录。水位不可见时，「条数上限设了 500
+    // 却在 60 条就开始丢弃」无从解释，因此容量必须传进工作台并画成双环。
+    expect(pageSource).toContain(':capacity="model.capacity"')
+    expect(workspaceSource).toContain('capacityGauge')
+    expect(workspaceSource).toContain('maxRecords')
+    expect(workspaceSource).toContain('maxBytes')
   })
 
   it('列表筛选与排序：工具栏的范围、排序、会话筛选、自动刷新开关与清理确认，列表项按名称、状态、会话、时间、耗时排列', () => {

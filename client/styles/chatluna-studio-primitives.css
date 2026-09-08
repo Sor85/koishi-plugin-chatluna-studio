@@ -285,6 +285,13 @@ body:has(.chatluna-studio-sidebar-rail :focus-visible) .chatluna-studio-scrollba
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Tooltip 不能靠 shadcn 的 shadow-md：Tailwind v4 把它写成
+   `box-shadow: var(--tw-inset-shadow), …, var(--tw-shadow)`，这些 --tw-* 未初始化时
+   整条声明非法，Firefox 会直接丢掉阴影。令牌已在浮层镜像里，这里写死一份。 */
+[data-slot="tooltip-content"] {
+  box-shadow: var(--chatluna-studio-secondary-shadow);
+}
+
 .chatluna-studio-solid-secondary-surface:not(.is-frosted) {
   border-color: var(--chatluna-studio-secondary-outline);
   box-shadow: var(--chatluna-studio-secondary-shadow);
