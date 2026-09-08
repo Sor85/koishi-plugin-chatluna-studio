@@ -325,7 +325,12 @@
   padding: 8px;
 }
 
+/* 负 margin 把滚动内容顶进吸顶工具栏背后，让毛玻璃有真实内容可采样（ADR-0071）。
+   这里必须把共享规则里的 height: 100% 交回 auto：显式高度会让滚动视口整体上移 56px，
+   面板底部空出一条等高死区，最后一条记录被截在死区上沿。auto 时网格项按 stretch 求值，
+   外边距盒填满网格区域，视口底缘因此贴住面板底缘。 */
 .chatluna-studio-model-request-list {
+  height: auto;
   margin-top: -56px;
   padding-top: 64px;
   scroll-padding-top: 64px;
