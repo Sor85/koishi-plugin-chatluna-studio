@@ -375,6 +375,7 @@ import {
   projectCompositionFocusBoundary,
   projectCompositionFocusSpan,
   resolveCompositionFocusFlip,
+  resolveCompositionFocusRequests,
   resolveCompositionFocusWindow,
 } from './composition-focus'
 import {
@@ -581,14 +582,23 @@ const compositionFocusWindow = computed(() => (
     ? resolveCompositionFocusWindow(timingSegments.value, expandedRequestIds.value)
     : undefined
 ))
+/** 窗口里该画哪几条请求的分段。缺省表示铺整段会话，不筛。 */
+const compositionFocusRequestIds = computed(() => resolveCompositionFocusRequests(
+  timingSegments.value,
+  compositionFocusWindow.value,
+  expandedRequestIds.value,
+))
 const focusedCompositionTracks = computed(() => {
   const focus = compositionFocusWindow.value
   if (!focus) return compositionTracks.value
+  const visible = compositionFocusRequestIds.value
   // 轨道清单仍按未投影的分段算：窗口里恰好没有某一档时留一条空轨道，否则左侧标签列会随
   // 展开与折叠增删，整块组成图跟着上下跳，而动画只作用于横轴。
   return compositionTracks.value.map(({ kind, segments }) => ({
     kind,
     segments: segments.flatMap((segment) => {
+      // 先按请求身份筛一遍：贴着窗口端点的邻格与几何上无从分辨，判据见焦点 module。
+      if (visible && segment.requestId && !visible.has(segment.requestId)) return []
       const span = projectCompositionFocusSpan(focus, segment)
       return span ? [{ ...segment, ...span }] : []
     }),

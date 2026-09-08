@@ -61,6 +61,19 @@ const FOCUS_WINDOW_MIN_WIDTH = 0.01
 /** 投影容差：并集端点由浮点求得，恰好贴着窗口边缘的分段与边界线不该被判成窗口外。 */
 const FOCUS_EDGE_TOLERANCE = 0.001
 
+/**
+ * 端点噪声：小于它的重叠一律当作「贴着边缘但没有落进窗口」。
+ *
+ * 窗口端点与分段端点求法不同却指向同一个刻度——窗口端点取时间槽的左右缘，分段端点由
+ * 「格左 + 格宽 × 格内占比」连乘求得，而格内占比本身是逐项累加出来的。两串运算在百分比量级
+ * （0~100）上会差出几个 ULP，也就是 1e-15 上下。判据必须留出这份余量：邻格的末段正好结束在
+ * 窗口起点上时，差出的那一丝会被投影倍率放成一条正宽度，再被视图的像素级最小宽度撑成一枚短桩。
+ *
+ * 余量取到 1e-12，与真实的细分段之间仍有六个数量级：一条请求的组成项最细也是「一个字符占
+ * 整份请求体」，在最窄的时间槽里仍有 1e-7 量级的宽度。
+ */
+const FOCUS_EDGE_NOISE = 1e-12
+
 /** 视觉上等于没动的变换。自动刷新会把同一个窗口重新求一遍值，不该为此重起一段动画。 */
 const FOCUS_FLIP_MIN_SCALE_DELTA = 0.001
 const FOCUS_FLIP_MIN_TRANSLATE = 0.01
@@ -94,6 +107,30 @@ export function resolveCompositionFocusWindow(
 }
 
 /**
+ * 窗口里该画哪几条请求的分段；缺省表示轨道铺整段会话，不筛。
+ *
+ * 「落在窗口里」不能只按几何判。进行中的请求在时间轴上是一格零宽的槽（它只标出起点），而零宽槽
+ * 恰好贴在窗口端点上时，几何无从分辨它是窗口自己的边界还是隔壁那一条被顶到了边上：展开的那条
+ * 请求若正在进行，它定义的正是窗口端点，那一枚标记必须画；而一条没展开的进行中请求被前一格顶到
+ * 同一个刻度上时，画出来就成了「只打开一条请求却露出别人的分段」。身份是唯一分得开的判据。
+ *
+ * 因此规则是：展开的请求恒画；没展开的请求要在窗口内真的占到一段宽度才画——夹在并集中间的那几条
+ * 满足这一条，只是端点贴着窗口边缘的邻格不满足。
+ */
+export function resolveCompositionFocusRequests(
+  slots: readonly CompositionFocusSlot[],
+  window: CompositionFocusWindow | undefined,
+  focusedIds: ReadonlySet<string>,
+): ReadonlySet<string> | undefined {
+  if (!window) return undefined
+  const visible = new Set<string>()
+  for (const slot of slots) {
+    if (focusedIds.has(slot.id) || overlapsFocusWindow(window, slot)) visible.add(slot.id)
+  }
+  return visible
+}
+
+/**
  * 把一条分段投影到窗口里；整段落在窗口外时返回缺省，由调用方跳过它。
  *
  * 越出窗口的分段必须真的不渲染。轨道视图口是横向滚动容器，落在窗口右侧的绝对定位分段会撑出
@@ -102,23 +139,35 @@ export function resolveCompositionFocusWindow(
  *
  * 不重新兜最小宽度：最小宽度的口径定在未缩放的占比上（请求组成 module 的那一个常量），焦点里
  * 再兜一次会让细分段随倍率变厚，读出来的占比比真实值大。零宽分段照样保留——进行中的请求靠它
- * 在轨道上标出起点。
+ * 在轨道上标出起点，它属于哪条请求由上面那份清单先筛过一遍。
  */
 export function projectCompositionFocusSpan(
   window: CompositionFocusWindow | undefined,
   span: CompositionFocusSpan,
 ): CompositionFocusSpan | undefined {
   if (!window) return span
+  // 邻格贴着窗口边缘的残留不画：视图给分段兜了一个像素级最小宽度，留下来会在窗口边缘变成一枚
+  // 短桩，看起来像这条请求多出一档内容——只展开一条请求时，前一条请求的末段（工具声明是请求体
+  // 的末尾一档）就正好结束在窗口起点上。
+  //
+  // 判据必须落在未投影的坐标上。投影会把端点差乘上 100/窗口宽：一条请求只占整段会话的百分之
+  // 零点几时倍率上百，端点求法不同带来的那 1e-15 会被放成一条能画出来的正宽度，「夹完只剩零宽」
+  // 这种按等号判的写法因此拦不住它。
+  if (span.width > 0 && !overlapsFocusWindow(window, span)) return undefined
   const scale = 100 / window.width
   const left = (span.left - window.left) * scale
   const right = left + span.width * scale
   if (right < -FOCUS_EDGE_TOLERANCE || left > 100 + FOCUS_EDGE_TOLERANCE) return undefined
   const clampedLeft = Math.min(Math.max(left, 0), 100)
   const clampedRight = Math.min(Math.max(right, 0), 100)
-  // 原本有宽度、夹进窗口后只剩零宽的分段是邻格贴着窗口边缘的残留。它必须丢掉：视图给分段兜了
-  // 一个像素级最小宽度，留下来会在窗口边缘变成一枚短桩，看起来像这条请求多出一档内容。
-  if (span.width > 0 && clampedRight - clampedLeft <= 0) return undefined
   return { left: clampedLeft, width: clampedRight - clampedLeft }
+}
+
+/** 一条有宽度的区间有没有真的落进窗口，端点差留出一份浮点噪声的余量。 */
+function overlapsFocusWindow(window: CompositionFocusWindow, span: CompositionFocusSpan): boolean {
+  const left = Math.max(span.left, window.left)
+  const right = Math.min(span.left + span.width, window.left + window.width)
+  return right - left > FOCUS_EDGE_NOISE
 }
 
 /** 请求边界线的投影：落在窗口外的那几根不画，留在窗口内的按窗口坐标给出。 */

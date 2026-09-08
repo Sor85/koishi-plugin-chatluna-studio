@@ -3,6 +3,7 @@ import {
   projectCompositionFocusBoundary,
   projectCompositionFocusSpan,
   resolveCompositionFocusFlip,
+  resolveCompositionFocusRequests,
   resolveCompositionFocusWindow,
   type CompositionFocusSlot,
 } from '../client/model-request/composition-focus'
@@ -65,6 +66,40 @@ describe('请求组成图焦点窗口', () => {
   })
 })
 
+describe('请求组成图焦点里该画哪几条请求', () => {
+  it('没有窗口时不筛：轨道铺整段会话', () => {
+    expect(resolveCompositionFocusRequests(EVEN_SLOTS, undefined, focused('r2'))).toBeUndefined()
+  })
+
+  it('只展开一条时邻格不画：它的分段只会在窗口边缘露出一枚短桩', () => {
+    const window = resolveCompositionFocusWindow(EVEN_SLOTS, focused('r2'))
+
+    expect(resolveCompositionFocusRequests(EVEN_SLOTS, window, focused('r2'))).toEqual(focused('r2'))
+  })
+
+  it('夹在并集中间的请求照旧画：它在窗口里真的占到一段宽度', () => {
+    const window = resolveCompositionFocusWindow(EVEN_SLOTS, focused('r2', 'r4'))
+
+    expect(resolveCompositionFocusRequests(EVEN_SLOTS, window, focused('r2', 'r4'))).toEqual(focused('r2', 'r3', 'r4'))
+  })
+
+  it('进行中的请求按身份判：展开它才画，被前一格顶到窗口端点上的那一条不画', () => {
+    // 进行中的请求在时间轴上是一格零宽的槽，几何无从分辨它是窗口自己的边界还是邻格被顶到了边上。
+    const slots: readonly CompositionFocusSlot[] = [
+      { id: 'r1', left: 0, width: 40 },
+      { id: 'pending', left: 40, width: 0 },
+      { id: 'r2', left: 40, width: 40 },
+    ]
+    const window = resolveCompositionFocusWindow(slots, focused('r2'))
+
+    expect(window).toEqual({ left: 40, width: 40 })
+    expect(resolveCompositionFocusRequests(slots, window, focused('r2'))).toEqual(focused('r2'))
+    // 展开它自己时那一枚起点标记必须画出来，哪怕它定义的正是窗口端点。
+    const both = resolveCompositionFocusWindow(slots, focused('pending', 'r2'))
+    expect(resolveCompositionFocusRequests(slots, both, focused('pending', 'r2'))).toEqual(focused('pending', 'r2'))
+  })
+})
+
 describe('请求组成图焦点投影', () => {
   const window = { left: 25, width: 25 }
 
@@ -87,6 +122,21 @@ describe('请求组成图焦点投影', () => {
     // 前一条请求的末段正好结束在窗口起点上，后一条请求的首段正好从窗口终点开始。
     expect(projectCompositionFocusSpan(window, { left: 24, width: 1 })).toBeUndefined()
     expect(projectCompositionFocusSpan(window, { left: 50, width: 1 })).toBeUndefined()
+  })
+
+  it('端点差出几个 ULP 的残留同样不画：投影倍率会把浮点噪声放成一条能画出来的宽度', () => {
+    // 这两组数取自真实布局：窗口端点取时间槽的左右缘，分段端点由「格左 + 格宽 × 格内占比」
+    // 连乘求得，两串运算指向同一个刻度却差出一个 ULP。窗口只有 4.29% 宽，投影倍率因此 23 倍，
+    // 按「夹完还剩不剩宽度」判会留下一条 1e-14 宽的分段，再被视图的最小宽度撑成一枚短桩。
+    const narrow = { left: 14.398572068688306, width: 4.285507189077347 }
+    expect(projectCompositionFocusSpan(narrow, { left: 14.396571624145075, width: 0.0020004445432318294 })).toBeUndefined()
+    const wide = { left: 62.20169639203337, width: 3.020957264308692 }
+    expect(projectCompositionFocusSpan(wide, { left: 62.00771690398387, width: 0.19397948804950318 })).toBeUndefined()
+  })
+
+  it('真正跨过窗口边缘的分段照旧夹进来：时间槽被下限挤得互相重叠时前一格确有内容落在窗口里', () => {
+    // 与浮点残留的分界是「落进窗口的那一截有多长」：这一段有 0.5% 真的落在窗口内。
+    expect(projectCompositionFocusSpan(window, { left: 24.5, width: 1 })).toEqual({ left: 0, width: 2 })
   })
 
   it('投影是纯线性缩放，不重新兜最小宽度，因此同一档的厚度关系不变', () => {
