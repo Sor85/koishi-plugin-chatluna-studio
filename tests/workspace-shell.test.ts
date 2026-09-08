@@ -4,7 +4,8 @@ import { createFakeWorkspacePort } from '../client/workspace/fake-port'
 import { createFakeModelRequestPort } from '../client/model-request/fake-port'
 import { createFakePresetPort } from '../client/preset/fake-port'
 import type { StudioPresetDocument } from '../src/presets'
-import type { StudioModelRequestListItem } from '../src/types'
+import type { StudioModelRequestListItem, StudioModelRequestTrajectory } from '../src/types'
+import { deferred } from './helpers/deferred'
 
 /**
  * 工作室 shell：跨区域规则住在这里，页面只做布局与事件绑定。
@@ -95,6 +96,102 @@ describe('工作室 shell', () => {
 
     expect(shell.modelRequestWorkspaceModel.value.error).toBe('数据库不可用')
     expect(shell.modelRequestWorkspaceModel.value.loading).toBe(false)
+  })
+
+  it('切回分析后，较晚返回的会话轨迹不能让页面永久停在正在组装轨迹', async () => {
+    const { shell, modelRequest } = createShell()
+    const conversation = deferred<StudioModelRequestTrajectory>()
+    const request = deferred<StudioModelRequestTrajectory>()
+    const readTrajectory = modelRequest.getModelRequestTrajectory.bind(modelRequest)
+    const conversationResult = await readTrajectory({ recordId: 'record-1', mode: 'conversation' })
+    const requestResult = await readTrajectory({ recordId: 'record-1', mode: 'request' })
+    modelRequest.getModelRequestTrajectory = (input) => input.mode === 'conversation'
+      ? conversation.promise
+      : request.promise
+
+    // 会话读取尚未完成时切回分析；两个调用都走页面实际使用的 shell/controller 链路。
+    const oldRead = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'conversation' })
+    const currentRead = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'request' })
+    request.settle(requestResult)
+    await currentRead
+    conversation.settle(conversationResult)
+    await oldRead
+
+    const model = shell.modelRequestWorkspaceModel.value
+    expect(model.detailLoading).toBe(false)
+    // workspace.vue 会过滤掉模式不匹配的轨迹，并把模式不匹配视为 loading；
+    // trajectory.vue 在 loading && !trajectory 时显示“正在组装轨迹…”。
+    const requestTrajectory = model.trajectory?.mode === 'request' ? model.trajectory : undefined
+    const loading = model.detailLoading || model.trajectory?.mode !== 'request'
+    expect(loading && !requestTrajectory).toBe(false)
+    expect(model.error).toBe('')
+  })
+
+  it.each([
+    { recordId: 'record-2', mode: 'request' as const },
+    { recordId: 'record-1', mode: 'conversation' as const, expandedRequestIds: ['record-1'] },
+  ])('轨迹只保留最后发起的读取：$recordId / $mode / $expandedRequestIds', async (input) => {
+    const { shell, modelRequest } = createShell()
+    const old = deferred<StudioModelRequestTrajectory>()
+    const readTrajectory = modelRequest.getModelRequestTrajectory.bind(modelRequest)
+    const oldResult = await readTrajectory({ recordId: 'record-1', mode: input.mode })
+    const latestResult = await readTrajectory(input)
+    oldResult.records = [listItem('record-1')]
+    latestResult.records = [listItem(input.recordId)]
+    modelRequest.getModelRequestTrajectory = () => old.promise
+    const oldRead = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: input.mode })
+    modelRequest.getModelRequestTrajectory = async () => latestResult
+    await shell.loadModelRequestTrajectory(input)
+    old.settle(oldResult)
+    await oldRead
+
+    expect(shell.modelRequestWorkspaceModel.value.trajectory).toEqual(latestResult)
+  })
+
+  it('过期轨迹读取失败不覆盖当前读取的状态与错误', async () => {
+    const { shell, modelRequest } = createShell()
+    const old = deferred<StudioModelRequestTrajectory>()
+    const readTrajectory = modelRequest.getModelRequestTrajectory.bind(modelRequest)
+    modelRequest.getModelRequestTrajectory = () => old.promise
+    const oldRead = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'conversation' })
+    modelRequest.getModelRequestTrajectory = readTrajectory
+    await shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'request' })
+    old.fail(new Error('旧会话读取失败'))
+    await oldRead
+
+    expect(shell.modelRequestWorkspaceModel.value.error).toBe('')
+    expect(shell.modelRequestWorkspaceModel.value.trajectory?.mode).toBe('request')
+  })
+
+  it('最新轨迹读取失败仍显示错误，旧结果不能再补回', async () => {
+    const { shell, modelRequest } = createShell()
+    const old = deferred<StudioModelRequestTrajectory>()
+    const readTrajectory = modelRequest.getModelRequestTrajectory.bind(modelRequest)
+    const oldResult = await readTrajectory({ recordId: 'record-1', mode: 'conversation' })
+    modelRequest.getModelRequestTrajectory = () => old.promise
+    const oldRead = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'conversation' })
+    modelRequest.getModelRequestTrajectory = readTrajectory
+    modelRequest.rejectNext('getModelRequestTrajectory', new Error('当前读取失败'))
+    await shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'request' })
+    old.settle(oldResult)
+    await oldRead
+
+    expect(shell.modelRequestWorkspaceModel.value.error).toBe('当前读取失败')
+    expect(shell.modelRequestWorkspaceModel.value.detailLoading).toBe(false)
+    expect(shell.modelRequestWorkspaceModel.value.trajectory).toBeUndefined()
+  })
+
+  it('清理完成后，尚未返回的轨迹读取不能把已清空轨迹放回', async () => {
+    const { shell, modelRequest } = createShell()
+    const result = await modelRequest.getModelRequestTrajectory({ recordId: 'record-1', mode: 'request' })
+    const pending = deferred<StudioModelRequestTrajectory>()
+    modelRequest.getModelRequestTrajectory = () => pending.promise
+    const read = shell.loadModelRequestTrajectory({ recordId: 'record-1', mode: 'request' })
+    await shell.clearModelRequestRecords()
+    pending.settle(result)
+    await read
+
+    expect(shell.modelRequestWorkspaceModel.value.trajectory).toBeUndefined()
   })
 
   it('清理记录后列表、详情与轨迹一起归零', async () => {

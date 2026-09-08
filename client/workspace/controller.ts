@@ -67,6 +67,7 @@ export function createWorkspaceController(ports: StudioWorkspacePorts) {
    * 让「换了一份」照样触发重算，省掉的是那上千个代理。
    */
   const modelRequestTrajectoryState = shallowRef<StudioModelRequestTrajectory>()
+  let modelRequestTrajectoryRead = 0
   const modelRequestFacetsState = ref<StudioModelRequestFacets>(emptyModelRequestFacets)
   const modelRequestRecordsPageState = ref<ModelRequestRecordsPageState>({
     hasMore: false,
@@ -112,10 +113,16 @@ export function createWorkspaceController(ports: StudioWorkspacePorts) {
   }
 
   async function loadModelRequestTrajectory(input: ModelRequestTrajectoryQuery) {
+    // 以发起顺序而不是返回顺序提交。会话读取可能晚于切回分析后的单请求读取返回；
+    // 若让旧会话覆盖它，视图会过滤掉模式不匹配的载荷并永远显示“正在组装轨迹”。
+    const read = ++modelRequestTrajectoryRead
     try {
+      const trajectory = await ports.modelRequest.getModelRequestTrajectory(input)
+      if (read !== modelRequestTrajectoryRead) return
       // markRaw：这份载荷只被整份替换，代理它等于为上千条分段各建一个代理却没有任何一次写入。
-      modelRequestTrajectoryState.value = markRaw(await ports.modelRequest.getModelRequestTrajectory(input))
+      modelRequestTrajectoryState.value = markRaw(trajectory)
     } catch (error) {
+      if (read !== modelRequestTrajectoryRead) return
       throw normalizeWorkspaceError(error, '读取模型请求轨迹失败')
     }
   }
@@ -133,6 +140,7 @@ export function createWorkspaceController(ports: StudioWorkspacePorts) {
       await ports.modelRequest.clearModelRequestRecords()
       modelRequestRecordsState.value = []
       modelRequestRecordState.value = undefined
+      ++modelRequestTrajectoryRead
       modelRequestTrajectoryState.value = undefined
       modelRequestFacetsState.value = emptyModelRequestFacets
       modelRequestRecordsPageState.value = { hasMore: false, capacity: emptyModelRequestCapacity }
