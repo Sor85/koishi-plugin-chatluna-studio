@@ -57,17 +57,19 @@ describe('模型请求轨迹投影', () => {
     const trajectory = await trajectoryFor(store, first.id, 'request')
 
     expect(trajectory.records).toHaveLength(1)
+    // 行序就是阅读顺序：system → user → variable → assistant（连同它发起的工具调用）
+    // → response → tool。分析导航的分组顺序与右侧卡片分区都读同一份声明。
     expect(trajectory.rows.map(({ kind, source }) => ({ kind, source }))).toEqual([
       { kind: 'request', source: undefined },
       { kind: 'system', source: 'request' },
       { kind: 'user', source: 'request' },
       { kind: 'assistant', source: 'request' },
-      { kind: 'tool-definition', source: 'request' },
       { kind: 'tool-call', source: 'request' },
-      { kind: 'tool-result', source: 'request' },
       { kind: 'assistant', source: 'response' },
       { kind: 'assistant', source: 'response' },
       { kind: 'tool-call', source: 'response' },
+      { kind: 'tool-definition', source: 'request' },
+      { kind: 'tool-result', source: 'request' },
     ])
     // 行种类是一维基础证据种类：判断这一行是定义、调用还是结果不需要读第二个字段。
     expect(trajectory.rows.every(row => !('toolEvent' in row))).toBe(true)

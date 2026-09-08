@@ -2,8 +2,8 @@ import { ref } from 'vue'
 import {
   MODEL_ANALYSIS_RESPONSE_TARGET,
   modelAnalysisTargetId,
-  type ModelRequestAnalysisGroupKey,
 } from './analysis'
+import type { StudioEvidenceReadingGroup } from '../../src/evidence-reading-order'
 
 /**
  * 模型请求分析视图的展开态与原文态：哪张卡折叠着、哪个工具展开着、哪几段看原文、
@@ -56,7 +56,7 @@ export function createAnalysisExpansion() {
   const rawHistoryVariables = ref(new Set<string>())
   const responseRaw = ref(false)
   const responseRawMounted = ref(false)
-  const collapsedNavigationGroups = ref(new Set<ModelRequestAnalysisGroupKey>())
+  const collapsedNavigationGroups = ref(new Set<StudioEvidenceReadingGroup>())
   const activeNavigationTarget = ref('')
 
   function isCardCollapsed(target: string): boolean {
@@ -142,12 +142,12 @@ export function createAnalysisExpansion() {
     expandedTextTargets.value = new Set(targets)
   }
 
-  function isNavigationGroupCollapsed(group: ModelRequestAnalysisGroupKey): boolean {
+  function isNavigationGroupCollapsed(group: StudioEvidenceReadingGroup): boolean {
     return collapsedNavigationGroups.value.has(group)
   }
 
   /** 左侧导航分组默认全部展开，各自独立折叠；折叠一个分组不改变当前导航目标。 */
-  function toggleNavigationGroup(group: ModelRequestAnalysisGroupKey): void {
+  function toggleNavigationGroup(group: StudioEvidenceReadingGroup): void {
     collapsedNavigationGroups.value = toggled(collapsedNavigationGroups.value, group)
   }
 

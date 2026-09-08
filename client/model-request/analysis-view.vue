@@ -65,10 +65,6 @@
       </aside>
 
       <div ref="contentElement" class="chatluna-studio-model-analysis-content">
-        <header class="chatluna-studio-model-analysis-heading">
-          <h3>Messages <span>({{ visibleMessages.length }})</span></h3>
-        </header>
-
         <!-- 一个 Provider 覆盖整段分析：每张卡片各自挂一个 Provider 会随消息数线性增加组件实例。 -->
         <TooltipProvider :delay-duration="500">
         <div class="chatluna-studio-model-analysis-conversation">
@@ -79,8 +75,13 @@
             <p>当前过滤条件下没有请求消息</p>
           </div>
 
+          <template v-for="block in analysisBlocks" :key="block.key">
+          <header v-if="block.messages.length" class="chatluna-studio-model-analysis-heading">
+            <h3>{{ block.label }} <span>({{ block.messages.length }})</span></h3>
+          </header>
+
           <article
-            v-for="message in visibleMessages"
+            v-for="message in block.messages"
             :id="modelAnalysisTargetId(message.evidenceId)"
             :key="message.evidenceId"
             class="chatluna-studio-model-analysis-card"
@@ -213,7 +214,7 @@
             </div>
           </article>
 
-          <section v-if="detail.variables?.length && variablesVisible" class="chatluna-studio-model-analysis-variables">
+          <section v-if="block.variables" class="chatluna-studio-model-analysis-variables">
             <h3>Variables <span>({{ detail.variables.length }})</span></h3>
             <div class="chatluna-studio-model-analysis-variable-list">
               <article
@@ -285,7 +286,7 @@
             </div>
           </section>
 
-          <template v-if="responseVisible">
+          <template v-if="block.response">
           <section class="chatluna-studio-model-analysis-response-heading">
             <h3>Response</h3>
           </section>
@@ -433,7 +434,7 @@
           </article>
           </template>
 
-          <section v-if="toolDefinitionsVisible" :id="MODEL_ANALYSIS_TOOLS_TARGET" class="chatluna-studio-model-analysis-tools" :class="{ 'is-located': highlightedTarget === MODEL_ANALYSIS_TOOLS_TARGET }">
+          <section v-if="block.tools" :id="MODEL_ANALYSIS_TOOLS_TARGET" class="chatluna-studio-model-analysis-tools" :class="{ 'is-located': highlightedTarget === MODEL_ANALYSIS_TOOLS_TARGET }">
             <h3>Tools <span>({{ conversation.tools.length }})</span></h3>
             <p v-if="!conversation.tools.length" class="chatluna-studio-model-analysis-empty">请求未声明工具定义</p>
             <article
@@ -482,6 +483,7 @@
               </div>
             </article>
           </section>
+          </template>
         </div>
         </TooltipProvider>
       </div>
@@ -520,9 +522,13 @@ import {
   normalizeAnalysisQuery,
   resolveActiveAnalysisTarget,
   shouldExpandAnalysisText,
-  type ModelRequestAnalysisGroupKey,
   type ModelRequestAnalysisNavigationItem,
 } from './analysis'
+import {
+  STUDIO_EVIDENCE_READING_ORDER,
+  studioEvidenceReadingGroup,
+  type StudioEvidenceReadingGroup,
+} from '../../src/evidence-reading-order'
 import { createAnalysisExpansion } from './analysis-expansion'
 import { createEvidenceLocator, type LocateRequest } from '#client/shared/evidence-locator'
 import {
@@ -592,6 +598,43 @@ const responseToolResultsVisible = computed(() => isEvidenceVisible(evidenceFilt
 const responseVisible = computed(() => (
   responseContentVisible.value || responseToolCallsVisible.value || responseToolResultsVisible.value
 ))
+/**
+ * 右侧卡片的分区与左侧导航同源。
+ *
+ * 原先两侧各自决定顺序：导航按证据档位分组，卡片按请求体原始顺序平铺，再把变量、响应、工具
+ * 三块固定接在末尾。于是点导航里的 Assistant 会跳到卡片列表中段，而 Variable 明明排在
+ * User 之后，卡片里却要翻过整段对话才见到。共用 STUDIO_EVIDENCE_READING_ORDER 之后两侧
+ * 一定同序。
+ *
+ * 代价是请求体里的交错顺序不再体现在卡片的先后上——assistant 与紧随它的工具结果分别落进
+ * Assistant 档与 Tool 档。原始位次仍写在每张卡片头部的 `messages[n]` 路径上。
+ */
+const analysisBlocks = computed(() => {
+  const grouped = new Map<StudioEvidenceReadingGroup, ModelConversationMessage[]>()
+  for (const message of visibleMessages.value) {
+    const key = studioEvidenceReadingGroup({ kind: message.kind })
+    const bucket = grouped.get(key)
+    if (bucket) bucket.push(message)
+    else grouped.set(key, [message])
+  }
+  return STUDIO_EVIDENCE_READING_ORDER.flatMap((key) => {
+    const messages = grouped.get(key) ?? []
+    const variables = key === 'variable' && variablesVisible.value && Boolean(props.detail.variables?.length)
+    const response = key === 'response' && responseVisible.value
+    const tools = key === 'tool' && toolDefinitionsVisible.value
+    if (!messages.length && !variables && !response && !tools) return []
+    return [{
+      key,
+      // 分区标题取消息自己的种类标签：Tool 档下的消息全是工具结果，用聚合标题「Tool」会与
+      // 紧随其后的 TOOL DEFS 区块标题读起来像同一块。
+      label: studioEvidenceLabels(messages[0]?.kind ?? key).title,
+      messages,
+      variables,
+      response,
+      tools,
+    }]
+  })
+})
 // 展开态与原文态住在 analysis-expansion 里；这里只是它的渲染面。
 const {
   activeNavigationTarget,
@@ -845,7 +888,7 @@ function scrollNavigationTargetIntoView(target: string) {
 }
 
 // 折叠一个分组改变左侧条目的布局，跟随因此要重新量一次；跟随本身是 DOM 的事，留在视图。
-function toggleNavigationGroup(group: ModelRequestAnalysisGroupKey) {
+function toggleNavigationGroup(group: StudioEvidenceReadingGroup) {
   toggleNavigationGroupCollapsed(group)
   nextTick(scheduleNavigationTracking)
 }
@@ -1046,7 +1089,7 @@ function evidenceBadgeLabel(kind: StudioEvidenceKind) {
   return studioEvidenceLabels(kind).badge
 }
 
-function groupIcon(group: ModelRequestAnalysisGroupKey): Component {
+function groupIcon(group: StudioEvidenceReadingGroup): Component {
   if (group === 'system') return IconSettings
   if (group === 'user') return IconUser
   if (group === 'assistant') return IconRobot

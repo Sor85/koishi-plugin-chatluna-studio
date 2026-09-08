@@ -60,8 +60,8 @@ describe('模型请求分析展示模型', () => {
     expect(navigation.groups.map(({ key, count }) => ({ key, count }))).toEqual([
       { key: 'system', count: 1 },
       { key: 'user', count: 1 },
-      { key: 'response', count: 1 },
       { key: 'assistant', count: 2 },
+      { key: 'response', count: 1 },
       { key: 'tool', count: 2 },
     ])
 
@@ -79,7 +79,7 @@ describe('模型请求分析展示模型', () => {
     }]
     const navigationWithVariables = buildModelRequestAnalysisNavigation(parseModelRequestConversationDetail(request), request)
     expect(navigationWithVariables.groups.map(({ key }) => key)).toEqual([
-      'system', 'user', 'variable', 'response', 'assistant', 'tool',
+      'system', 'user', 'variable', 'assistant', 'response', 'tool',
     ])
 
     expect(navigation.groups.find(({ key }) => key === 'assistant')?.items[1]).toMatchObject({
@@ -191,7 +191,7 @@ describe('模型请求分析展示模型', () => {
     const navigation = buildModelRequestAnalysisNavigation(parseModelRequestConversationDetail(request), request)
 
     const weather = navigation.groups.flatMap(({ items }) => items).filter(({ searchText }) => searchText.includes(normalizeAnalysisQuery('北京')))
-    expect(weather.map(({ label }) => label)).toEqual(['RESPONSE', 'ASSISTANT', 'TOOL CALL'])
+    expect(weather.map(({ label }) => label)).toEqual(['ASSISTANT', 'TOOL CALL', 'RESPONSE'])
     expect(navigation.searchText).toContain('查询天气')
     expect(navigation.searchText).toContain('北京晴朗')
     expect(navigation.searchText).toContain('weather')

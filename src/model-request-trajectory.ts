@@ -15,6 +15,11 @@ import { normalizeEvidencePreviewText } from './evidence-preview-text'
 import { deriveModelRequestVariables, modelRequestVariableStatusLabel } from './model-request-variables'
 import { studioEvidenceAggregate } from './evidence-kind'
 import {
+  studioEvidenceReadingGroup,
+  studioEvidenceReadingRank,
+  type StudioEvidenceReadingGroup,
+} from './evidence-reading-order'
+import {
   aggregateModelRequestComposition,
   resolveModelRequestCompositionGranularity,
   type ModelRequestCompositionSlot,
@@ -38,6 +43,8 @@ interface BuildStudioModelRequestTrajectoryOptions {
 }
 
 interface ProjectedRow {
+  /** 这一行落在哪一档。只用于排序，不下发给客户端——账本行的档位由种类与来源现算即可。 */
+  group: StudioEvidenceReadingGroup
   evidenceId: string
   kind: StudioModelRequestTrajectoryKind
   preview: string
@@ -128,23 +135,24 @@ export function buildStudioModelRequestTrajectory(
 
     // 折叠的请求同样要走完投影：事件总数与组成占比是整段轨迹的事实，不随展开与否变化。
     // 折叠省掉的是行对象与它们的预览文本，也就是账本载荷本身。
-    for (const row of projectRequestRows(projection, variables)) {
+    //
+    // 请求行与响应行必须合成一份再排：响应整体是阅读顺序里的一档，先铺完请求行再追加响应行
+    // 会让响应排到工具往返之后，与分析导航给出的先后相反。
+    for (const { source, row } of orderTrajectoryEvents([
+      ...projectRequestRows(projection, variables).map(row => ({ source: 'request' as const, row })),
+      ...projectResponseRows(projection).map(row => ({ source: 'response' as const, row })),
+    ])) {
       const rowIndex = index++
       eventTotal += 1
       if (!expanded) continue
+      const { group, ...cells } = row
       rows.push({
         id: `${record.id}:${row.evidenceId}`,
         index: rowIndex,
         requestId: record.id,
-        source: 'request',
-        ...row,
+        source,
+        ...cells,
       })
-    }
-    for (const row of projectResponseRows(projection)) {
-      const rowIndex = index++
-      eventTotal += 1
-      if (!expanded) continue
-      rows.push({ id: `${record.id}:${row.evidenceId}`, index: rowIndex, requestId: record.id, source: 'response', ...row })
     }
     const composition = projectPromptComposition(projection, variables)
     for (const item of composition) {
@@ -215,11 +223,24 @@ function resolveTimeSpan(records: readonly StudioModelRequestRecord[]): number {
   return Math.max(end - start, 1)
 }
 
+/**
+ * 账本事件按阅读顺序排列。
+ *
+ * 排序必须稳定：同一档内的先后就是投影顺序，也就是请求体里的原始位次。工具调用跟着发起它的
+ * 那条 assistant 消息落在同一档，因此稳定排序会让它紧跟在那条消息之后。
+ */
+function orderTrajectoryEvents<T extends { row: ProjectedRow }>(events: readonly T[]): T[] {
+  return [...events].sort((left, right) => (
+    studioEvidenceReadingRank(left.row.group) - studioEvidenceReadingRank(right.row.group)
+  ))
+}
+
 function projectRequestRows(
   projection: ModelEvidenceProjection,
   variables: readonly StudioModelRequestVariable[],
 ): ProjectedRow[] {
   const rows: ProjectedRow[] = projection.toolDefinitions.map(definition => ({
+    group: 'tool' as const,
     evidenceId: definition.evidenceId,
     kind: 'tool-definition' as const,
     preview: `工具定义 · ${definition.name}`,
@@ -230,6 +251,7 @@ function projectRequestRows(
   }
   for (const variable of variables) {
     rows.push({
+      group: 'variable',
       evidenceId: `variable:${variable.id}`,
       kind: 'variable',
       preview: `${variable.name} · ${variable.status === 'observed' ? compactText(variable.value ?? '') || '空值' : modelRequestVariableStatusLabel(variable.status)}`,
@@ -240,21 +262,14 @@ function projectRequestRows(
       ...(variable.value !== undefined ? { variableValue: variable.value } : {}),
     })
   }
-  return rows.sort((left, right) => requestRowOrder(left.kind) - requestRowOrder(right.kind))
-}
-
-function requestRowOrder(kind: StudioModelRequestTrajectoryKind): number {
-  if (kind === 'system') return 0
-  if (kind === 'user') return 1
-  if (kind === 'variable') return 2
-  if (kind === 'assistant') return 3
-  return 4
+  return rows
 }
 
 function messageRows(message: ModelEvidenceMessage): ProjectedRow[] {
   const rows: ProjectedRow[] = []
   if (message.role === 'tool') {
     rows.push({
+      group: 'tool',
       evidenceId: message.evidenceId,
       kind: 'tool-result',
       preview: `${message.toolName ?? '工具结果'} · ${compactText(message.text) || '无输出'}`,
@@ -263,10 +278,12 @@ function messageRows(message: ModelEvidenceMessage): ProjectedRow[] {
     })
     return rows
   }
+  const group = studioEvidenceReadingGroup({ kind: message.role })
   const reasoning = message.reasoning ? compactText(message.reasoning) : ''
   const text = compactText(message.text)
   if (text || reasoning) {
     rows.push({
+      group,
       evidenceId: message.evidenceId,
       kind: message.role,
       preview: text || `思考 · ${reasoning}`,
@@ -274,6 +291,8 @@ function messageRows(message: ModelEvidenceMessage): ProjectedRow[] {
   }
   for (const call of message.toolCalls) {
     rows.push({
+      // 工具调用跟着发起它的那条消息：导航把它列在那条消息之后，账本必须给出同一个先后。
+      group,
       evidenceId: call.evidenceId,
       kind: 'tool-call',
       preview: `${call.name} · ${compactText(call.arguments ?? '') || '无参数'}`,
@@ -284,16 +303,20 @@ function messageRows(message: ModelEvidenceMessage): ProjectedRow[] {
   return rows
 }
 
+/** 响应侧证据整体是阅读顺序里的一档，不按 assistant / tool-call / tool-result 拆开排。 */
+const RESPONSE_GROUP = studioEvidenceReadingGroup({ kind: 'response', source: 'response' })
+
 function projectResponseRows(projection: ModelEvidenceProjection): ProjectedRow[] {
   return projection.responseEvents.flatMap<ProjectedRow>((event) => {
     if (event.kind === 'reasoning') {
-      return [{ evidenceId: event.evidenceId, kind: 'assistant', preview: `思考 · ${compactText(event.text ?? '')}` }]
+      return [{ group: RESPONSE_GROUP, evidenceId: event.evidenceId, kind: 'assistant', preview: `思考 · ${compactText(event.text ?? '')}` }]
     }
     if (event.kind === 'content') {
-      return [{ evidenceId: event.evidenceId, kind: 'assistant', preview: compactText(event.text ?? '') }]
+      return [{ group: RESPONSE_GROUP, evidenceId: event.evidenceId, kind: 'assistant', preview: compactText(event.text ?? '') }]
     }
     if (event.kind === 'tool-call') {
       return [{
+        group: RESPONSE_GROUP,
         evidenceId: event.evidenceId,
         kind: 'tool-call',
         preview: `${event.name ?? '工具调用'} · ${compactText(event.arguments ?? '') || '无参数'}`,
@@ -303,6 +326,7 @@ function projectResponseRows(projection: ModelEvidenceProjection): ProjectedRow[
     }
     if (event.kind === 'tool-result') {
       return [{
+        group: RESPONSE_GROUP,
         evidenceId: event.evidenceId,
         kind: 'tool-result',
         preview: `${event.name ?? '工具结果'} · ${compactText(event.text ?? '') || '无输出'}`,
