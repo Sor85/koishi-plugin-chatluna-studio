@@ -1,4 +1,5 @@
 import type { Context } from 'koishi'
+import { findChatLunaRuntime } from '../chatluna/runtime'
 import { parsePresetSourceDocument } from './source-document'
 import type {
   PresetRuntimeSessionTarget,
@@ -233,15 +234,26 @@ function snapshotCharacterPreset(presetName: string, preset: CharacterPresetLike
   })
 }
 
+/**
+ * 预设服务只能按服务名现取，不能写成 `ctx.chatluna.preset`。
+ *
+ * `chatluna` 是已注册服务，属性访问拿得到值，但本插件没有把它写进 `inject`（声明了会让 ChatLuna 每次
+ * 重载都连带重建 Studio），于是 Cordis 会在每一次对话上报一条注入告警。走 `get(name)` 拿到的是同一个
+ * 实例且不触发告警，详见 `../chatluna/runtime`。
+ *
+ * 先用 ChatInterface 自己的上下文取：被测插件可能装在隔离了服务映射的 loader group 里，此时只有它那份
+ * 上下文能解析到实例。
+ */
 function resolveCorePreset(chatInterface: unknown, ctx: Context, presetName: string): CorePresetLike | undefined {
-  const interfaceContext = readRecord(readRecord(chatInterface)?.ctx)
-  const candidates = [readRecord(interfaceContext?.chatluna), readRecord(readRecord(ctx as unknown)?.chatluna)]
-  for (const chatluna of candidates) {
-    const service = readRecord(chatluna?.preset)
-    const getPreset = service?.getPreset
-    if (typeof getPreset !== 'function') continue
+  const hosts = [readRecord(chatInterface)?.ctx, ctx]
+  for (const host of hosts) {
+    const service = findChatLunaRuntime(host, 'chatluna', (chatluna) => {
+      const preset = readRecord(chatluna.preset)
+      return typeof preset?.getPreset === 'function' ? preset : undefined
+    })
+    if (!service) continue
     try {
-      const computed = getPreset.call(service, presetName, false)
+      const computed = (service.getPreset as (name: string, immutable: boolean) => unknown).call(service, presetName, false)
       const value = readRecord(readRecord(computed)?.value)
       if (value) return value as CorePresetLike
     } catch {}

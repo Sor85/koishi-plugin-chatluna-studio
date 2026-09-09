@@ -16,6 +16,20 @@ function session(botId: string, conversationId: string) {
 }
 
 /**
+ * ChatInterface 携带的上下文在真实环境里是 Cordis 上下文，预设服务按服务名解析。
+ *
+ * 测试用最小替身：只提供 `get(name)`，不提供 `chatluna` 属性。属性访问会被 Cordis 记一条注入告警
+ * （见 `resolveCorePreset` 注释），替身缺少该属性即可让退回属性访问的实现直接失败。
+ */
+function chatInterface(preset: unknown) {
+  return {
+    ctx: {
+      get: (name: string) => name === 'chatluna' ? { preset: { getPreset: () => ({ value: preset }) } } : undefined,
+    },
+  }
+}
+
+/**
  * 真实环境里（机器人，会话）就是完整身份，跟踪器直接从 session 读出来。
  *
  * 这个包装只是把测试原有的「先声明有哪些目标」写法留住：它不再参与解析，只做断言前的取值。
@@ -43,9 +57,7 @@ describe('运行时预设快照关联', () => {
     }
     const variables = { built: { preset: 'demo' } }
     const currentSession = session(target.botId, target.conversationId)
-    await emit(app, 'chatluna/before-chat', 'core-turn', {}, variables, {
-      ctx: { chatluna: { preset: { getPreset: () => ({ value: preset }) } } },
-    }, currentSession)
+    await emit(app, 'chatluna/before-chat', 'core-turn', {}, variables, chatInterface(preset), currentSession)
 
     preset.rawText = 'changed after event'
     preset.messages[0]!.content = 'changed after event'
@@ -123,12 +135,10 @@ describe('运行时预设快照关联', () => {
     const tracker = createTracker(app, { '20001:private:10001:20001': target })
     await app.start()
 
-    await emit(app, 'chatluna/before-chat', 'core-turn', {}, { built: { preset: 'core-demo' } }, {
-      ctx: { chatluna: { preset: { getPreset: () => ({ value: {
-        rawText: 'prompts:\n  - role: system\n    content: Core {value}\n',
-        messages: [{ content: 'Core {value}', _getType: () => 'system' }],
-      } }) } } },
-    }, session(target.botId, target.conversationId))
+    await emit(app, 'chatluna/before-chat', 'core-turn', {}, { built: { preset: 'core-demo' } }, chatInterface({
+      rawText: 'prompts:\n  - role: system\n    content: Core {value}\n',
+      messages: [{ content: 'Core {value}', _getType: () => 'system' }],
+    }), session(target.botId, target.conversationId))
     await emit(app, 'chatluna_character/before-chat', {
       session: session(target.botId, target.conversationId),
       presetName: 'character-demo',
@@ -149,11 +159,9 @@ describe('运行时预设快照关联', () => {
     const tracker = createTracker(app, { '20001:private:10001:20001': target })
     await app.start()
 
-    const makeInterface = (name: string) => ({
-      ctx: { chatluna: { preset: { getPreset: () => ({ value: {
-        rawText: `prompts:\n  - role: system\n    content: ${name} {value}\n`,
-        messages: [{ content: `${name} {value}`, _getType: () => 'system' }],
-      } }) } } },
+    const makeInterface = (name: string) => chatInterface({
+      rawText: `prompts:\n  - role: system\n    content: ${name} {value}\n`,
+      messages: [{ content: `${name} {value}`, _getType: () => 'system' }],
     })
     const currentSession = session(target.botId, target.conversationId)
     await emit(app, 'chatluna/before-chat', 'same-upstream-turn', {}, { built: { preset: 'first' } }, makeInterface('First'), currentSession)
@@ -176,11 +184,9 @@ describe('运行时预设快照关联', () => {
     })
     await app.start()
 
-    const makeInterface = (name: string) => ({
-      ctx: { chatluna: { preset: { getPreset: () => ({ value: {
-        rawText: `prompts:\n  - role: system\n    content: ${name} {value}\n`,
-        messages: [{ content: `${name} {value}`, _getType: () => 'system' }],
-      } }) } } },
+    const makeInterface = (name: string) => chatInterface({
+      rawText: `prompts:\n  - role: system\n    content: ${name} {value}\n`,
+      messages: [{ content: `${name} {value}`, _getType: () => 'system' }],
     })
     await emit(app, 'chatluna/before-chat', 'shared-upstream-turn', {}, { built: { preset: 'first' } }, makeInterface('First'), session(first.botId, first.conversationId))
     await emit(app, 'chatluna/before-chat', 'shared-upstream-turn', {}, { built: { preset: 'second' } }, makeInterface('Second'), session(second.botId, second.conversationId))
@@ -193,5 +199,37 @@ describe('运行时预设快照关联', () => {
     expect(tracker.getActiveSnapshots(first)).toEqual([])
     expect(tracker.getActiveSnapshots(second)).toMatchObject([{ presetName: 'second' }])
     tracker.dispose()
+  })
+
+  it('按服务名解析预设服务，不在对话链路上留下注入告警', async () => {
+    const app = new App()
+    runningApps.push(app)
+    const warnings: string[] = []
+    app.on('internal/warning', (error) => {
+      warnings.push(error instanceof Error ? error.message : String(error))
+    })
+    app.provide('chatluna')
+    app.set('chatluna', {
+      preset: {
+        getPreset: () => ({ value: {
+          rawText: 'prompts:\n  - role: system\n    content: Hello {name}.\n',
+          messages: [{ content: 'Hello {name}.', _getType: () => 'system' }],
+        } }),
+      },
+    })
+    const target = { botId: '20001', conversationId: 'group:30001' }
+    // 注入告警只在有插件归属的上下文里上报，因此跟踪器必须装进真实插件作用域，根上下文测不出问题。
+    let tracker: PresetRuntimeSnapshotTracker | undefined
+    app.plugin((inner) => {
+      tracker = new PresetRuntimeSnapshotTracker(inner)
+    })
+    await app.start()
+
+    // ChatInterface 不带上下文，解析退回插件自己的上下文；真实运行时里两条候选都会被走到。
+    await emit(app, 'chatluna/before-chat', 'core-turn', {}, { built: { preset: 'demo' } }, {}, session(target.botId, target.conversationId))
+
+    expect(tracker?.getActiveSnapshots(target)).toMatchObject([{ kind: 'core', presetName: 'demo' }])
+    expect(warnings).toEqual([])
+    tracker?.dispose()
   })
 })
