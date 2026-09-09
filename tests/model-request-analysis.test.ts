@@ -586,11 +586,58 @@ describe('模型请求分析展示模型', () => {
     // 工具结果消息排在精确 occurrence 之后：occurrence 的范围按正文偏移量算，只有原文能标出来。
     expect(view).toContain('v-else-if="messagePayloadTree(message)"')
     expect(view).toContain(':node="messagePayloadTree(message)!"')
-    expect(view).toContain('class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer"')
+    expect(view.match(/class="chatluna-studio-model-analysis-tool-payload"/g)).toHaveLength(4)
+    expect(view).not.toContain('chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer')
     // 请求侧与响应侧的工具调用各有一个原文退路，工具结果一个，合计三处 v-else。
-    expect(view.match(/<AnalysisTextBlock\s+v-else(?!-)/g)).toHaveLength(3)
+    expect(view.match(/<AnalysisContentBlock\s+v-else(?!-)/g)).toHaveLength(3)
     expect(view).not.toContain('parseAnalysisJson')
-    expect(styles).toMatch(/\.chatluna-studio-model-analysis-tool-payload\.chatluna-studio-model-request-json-viewer \{[^}]*max-height: 420px;/s)
+    const payloadRule = styles.match(/\.chatluna-studio-model-analysis-tool-payload \{([^}]*)\}/s)?.[1]
+    expect(payloadRule).toBeDefined()
+    expect(payloadRule).toContain('min-width: 0;')
+    expect(payloadRule).not.toMatch(/max-height:|overflow:|border:|background:|padding:|overscroll-behavior:/)
+  })
+
+  /**
+   * 工具 JSON 与长正文共用同一层折叠壳。
+   *
+   * 三处工具载荷都要把 JSON 树交给 `AnalysisContentBlock` 的插槽，而不是各自摆一个裸 div——
+   * 漏掉一处不会报错，只表现为那一处的长 JSON 一路铺到几屏高，把后面的消息推出视野。
+   * 字符数取原文字符串长度，与正文折叠按钮的口径一致。
+   */
+  it('工具 JSON 与长正文共用折叠壳，超过 12 行时自动省略', () => {
+    const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+
+    // 四处载荷（请求工具结果消息、请求/响应工具调用、响应工具结果）都走插槽，不再是裸 div。
+    expect(view.match(/<AnalysisContentBlock[^>]*>\s*<div class="chatluna-studio-model-analysis-tool-payload">/gs)).toHaveLength(4)
+    expect(view).not.toMatch(/<div v-if="(callArgumentsTree\(call\)|toolResultTree\(result\))" class="chatluna-studio-model-analysis-tool-payload">/)
+    expect(view).toContain('setup(blockProps, { slots })')
+    expect(view).toContain('slots.default()')
+    // 折叠判定读 text-wrap 的第一个子元素：正文是 pre，载荷是结构树，行高都取自它自己。
+    expect(view).toContain('return textWrap.value?.firstElementChild as HTMLElement | undefined')
+    expect(view).toContain('exceedsAnalysisLineLimit(element.scrollHeight, lineHeight, blockProps.maxLines)')
+    // 观察内容节点而不是被 max-height 裁住的 text-wrap：折叠态下裁后的盒子不随树的展开变化。
+    expect(view).toMatch(/const element = measuredContent\(\)[\s\S]{0,400}?resizeObserver\.observe\(element\)/)
+    expect(view).not.toContain('resizeObserver.observe(textWrap.value)')
+    expect(view).toContain('`展开全部（${blockProps.value.length} 字符）`')
+    // 载荷字号与行高必须显式声明，否则继承来的 `normal` 解析不出数值，折叠判定整体失效。
+    const payloadRule = styles.match(/\.chatluna-studio-model-analysis-tool-payload \{([^}]*)\}/s)?.[1]
+    expect(payloadRule).toContain('line-height: 1.6;')
+    expect(payloadRule).toContain('font-size: var(--chatluna-studio-font-md);')
+    // 裁切挂在 text-wrap 上；挂回 `> pre` 会漏掉结构树，挂到 section 上会连展开按钮一起裁掉。
+    expect(styles).toMatch(/\.chatluna-studio-model-analysis-section\.is-collapsed \.chatluna-studio-model-analysis-text-wrap \{[^}]*max-height: var\(--chatluna-studio-model-analysis-collapse-height\);[^}]*overflow: hidden;/s)
+    expect(styles).not.toContain('.chatluna-studio-model-analysis-text-wrap > pre {')
+  })
+
+  it('工具标题布局与文案样式不泄漏到 JSON 载荷，避免长树居中后首尾被裁切', () => {
+    const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+
+    expect(view.match(/class="chatluna-studio-model-analysis-tool-call-header"/g)).toHaveLength(3)
+    expect(styles).toContain('.chatluna-studio-model-analysis-tool-call-header,')
+    expect(styles).toContain('.chatluna-studio-model-analysis-tool-call-header span')
+    expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call > div')
+    expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call span')
   })
 
   /**

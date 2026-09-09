@@ -148,7 +148,7 @@
               />
             </div>
             <div v-show="!isCardCollapsed(modelAnalysisTargetId(message.evidenceId)) && !isMessageRaw(message.evidenceId)" class="chatluna-studio-model-analysis-formatted">
-              <AnalysisTextBlock
+              <AnalysisContentBlock
                 v-if="occurrenceForMessage(message.evidenceId)"
                 :value="message.content"
                 :search-query="normalizedSearch"
@@ -157,24 +157,28 @@
               />
               <!-- 精确 occurrence 优先：它的范围是按正文的 UTF-16 偏移量算的，只有原文那一棵
                    pre 能标出来，结构视图里没有对应位置。 -->
-              <section v-else-if="messagePayloadTree(message)" class="chatluna-studio-model-analysis-section">
-                <div class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
+              <AnalysisContentBlock
+                v-else-if="messagePayloadTree(message)"
+                :value="message.content"
+                :force-expanded="isTextForceExpanded(modelAnalysisTargetId(message.evidenceId))"
+              >
+                <div class="chatluna-studio-model-analysis-tool-payload">
                   <ModelRequestJsonTree :node="messagePayloadTree(message)!" :open="true" :root="true" />
                 </div>
-              </section>
+              </AnalysisContentBlock>
               <AnalysisContentParts
                 v-else-if="message.contentParts.length"
                 :parts="message.contentParts"
                 :search-query="normalizedSearch"
                 :force-expanded="isTextForceExpanded(modelAnalysisTargetId(message.evidenceId))"
               />
-              <AnalysisTextBlock
+              <AnalysisContentBlock
                 v-else-if="message.content"
                 :value="message.content"
                 :search-query="normalizedSearch"
                 :force-expanded="isTextForceExpanded(modelAnalysisTargetId(message.evidenceId))"
               />
-              <AnalysisTextBlock
+              <AnalysisContentBlock
                 v-if="message.reasoning"
                 label="思考"
                 :value="message.reasoning"
@@ -190,11 +194,18 @@
                   class="chatluna-studio-model-analysis-tool-call is-call"
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(call.evidenceId) }"
                 >
-                  <div><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
-                  <div v-if="callArgumentsTree(call)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
-                    <ModelRequestJsonTree :node="callArgumentsTree(call)!" :open="true" :root="true" :strings-expanded="true" />
-                  </div>
-                  <AnalysisTextBlock
+                  <div class="chatluna-studio-model-analysis-tool-call-header"><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
+                  <AnalysisContentBlock
+                    v-if="callArgumentsTree(call)"
+                    :value="call.arguments || '{}'"
+                    :force-expanded="isTextForceExpanded(modelAnalysisTargetId(call.evidenceId))"
+                    compact
+                  >
+                    <div class="chatluna-studio-model-analysis-tool-payload">
+                      <ModelRequestJsonTree :node="callArgumentsTree(call)!" :open="true" :root="true" :strings-expanded="true" />
+                    </div>
+                  </AnalysisContentBlock>
+                  <AnalysisContentBlock
                     v-else
                     :value="call.arguments || '{}'"
                     :search-query="normalizedSearch"
@@ -274,7 +285,7 @@
                     :bot-id="detail.entities.botId"
                     :characters="variable.value?.length"
                   />
-                  <AnalysisTextBlock
+                  <AnalysisContentBlock
                     v-else-if="variable.status === 'observed'"
                     :value="variable.value ?? ''"
                     :search-query="normalizedSearch"
@@ -356,14 +367,14 @@
               <p v-if="response.status !== 'complete'" class="chatluna-studio-model-analysis-empty">
                 {{ response.statusMessage || '响应没有可展示内容' }}
               </p>
-              <AnalysisTextBlock
+              <AnalysisContentBlock
                 v-if="response.reasoning.length && responseContentVisible"
                 label="思考"
                 :value="response.reasoning.join('\n')"
                 :search-query="normalizedSearch"
                 :force-expanded="isTextForceExpanded(MODEL_ANALYSIS_RESPONSE_TARGET)"
               />
-              <AnalysisTextBlock
+              <AnalysisContentBlock
                 v-if="response.content.length && responseContentVisible"
                 :value="response.content.join('\n')"
                 :search-query="normalizedSearch"
@@ -378,18 +389,25 @@
                   class="chatluna-studio-model-analysis-tool-call is-call"
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(call.evidenceId) }"
                 >
-                  <div><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
+                  <div class="chatluna-studio-model-analysis-tool-call-header"><strong><AnalysisHighlightedText :value="call.name" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="call.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
                   <!-- 参数解析不出结构时退回原文：模型流式吐出的参数可能被截断，硬套 JSON 树只会
                        画出一棵空树，把「参数不完整」这条事实藏掉。 -->
-                  <div v-if="callArgumentsTree(call)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
-                    <ModelRequestJsonTree
-                      :node="callArgumentsTree(call)!"
-                      :open="true"
-                      :root="true"
-                      :strings-expanded="true"
-                    />
-                  </div>
-                  <AnalysisTextBlock
+                  <AnalysisContentBlock
+                    v-if="callArgumentsTree(call)"
+                    :value="call.arguments || '{}'"
+                    :force-expanded="isTextForceExpanded(modelAnalysisTargetId(call.evidenceId))"
+                    compact
+                  >
+                    <div class="chatluna-studio-model-analysis-tool-payload">
+                      <ModelRequestJsonTree
+                        :node="callArgumentsTree(call)!"
+                        :open="true"
+                        :root="true"
+                        :strings-expanded="true"
+                      />
+                    </div>
+                  </AnalysisContentBlock>
+                  <AnalysisContentBlock
                     v-else
                     :value="call.arguments || '{}'"
                     :search-query="normalizedSearch"
@@ -410,11 +428,18 @@
                   class="chatluna-studio-model-analysis-tool-call is-result"
                   :class="{ 'is-located': highlightedTarget === modelAnalysisTargetId(result.evidenceId) }"
                 >
-                  <div><strong><AnalysisHighlightedText :value="result.name || '工具结果'" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="result.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
-                  <div v-if="toolResultTree(result)" class="chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer">
-                    <ModelRequestJsonTree :node="toolResultTree(result)!" :open="true" :root="true" />
-                  </div>
-                  <AnalysisTextBlock
+                  <div class="chatluna-studio-model-analysis-tool-call-header"><strong><AnalysisHighlightedText :value="result.name || '工具结果'" :query="normalizedSearch" /></strong><span><AnalysisHighlightedText :value="result.id || '无调用 ID'" :query="normalizedSearch" /></span></div>
+                  <AnalysisContentBlock
+                    v-if="toolResultTree(result)"
+                    :value="result.content"
+                    :force-expanded="isTextForceExpanded(modelAnalysisTargetId(result.evidenceId))"
+                    compact
+                  >
+                    <div class="chatluna-studio-model-analysis-tool-payload">
+                      <ModelRequestJsonTree :node="toolResultTree(result)!" :open="true" :root="true" />
+                    </div>
+                  </AnalysisContentBlock>
+                  <AnalysisContentBlock
                     v-else
                     :value="result.content"
                     :search-query="normalizedSearch"
@@ -1116,7 +1141,7 @@ const AnalysisHighlightedText = defineComponent({
   },
 })
 
-const AnalysisTextBlock = defineComponent({
+const AnalysisContentBlock = defineComponent({
   props: {
     label: String,
     value: { type: String, default: '' },
@@ -1126,15 +1151,21 @@ const AnalysisTextBlock = defineComponent({
     occurrence: Object as () => ModelRequestOccurrence | undefined,
     compact: Boolean,
   },
-  setup(blockProps) {
+  setup(blockProps, { slots }) {
     const expanded = ref(false)
     const collapsible = ref(false)
     const collapsedHeight = ref('')
-    const textElement = ref<HTMLElement>()
+    const textWrap = ref<HTMLElement>()
     let resizeObserver: ResizeObserver | undefined
 
+    // 正文行高可能随传入内容变化（文本走 pre，JSON 走树），但两者都是 text-wrap 的第一个
+    // 子元素；量它而不是 text-wrap，既拿得到自己的行高，也避开展开按钮的高度。
+    function measuredContent() {
+      return textWrap.value?.firstElementChild as HTMLElement | undefined
+    }
+
     function measureLines() {
-      const element = textElement.value
+      const element = measuredContent()
       if (!element) return
       const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight)
       if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
@@ -1162,31 +1193,44 @@ const AnalysisTextBlock = defineComponent({
     onMounted(async () => {
       await nextTick()
       measureLines()
-      if (typeof ResizeObserver === 'undefined' || !textElement.value) return
+      const element = measuredContent()
+      if (typeof ResizeObserver === 'undefined' || !element) return
+      // 观察内容节点，不是 text-wrap：折叠态下 text-wrap 被 max-height 裁住，JSON 树内部
+      // 再展开或收起都不会改变它的盒子，展开按钮会卡在该出现时不出现、该消失时不消失。
       resizeObserver = new ResizeObserver(measureLines)
-      resizeObserver.observe(textElement.value)
+      resizeObserver.observe(element)
     })
     onBeforeUnmount(() => resizeObserver?.disconnect())
+
+    // 载荷插槽与正文共用一套折叠壳：两者都挂在 text-wrap 上，测量与渐隐遮罩因此只有一份实现。
+    const renderContent = () => {
+      const wrapStyle = { '--chatluna-studio-model-analysis-collapse-height': collapsedHeight.value }
+      if (slots.default) {
+        return h('div', {
+          ref: textWrap,
+          style: wrapStyle,
+          class: 'chatluna-studio-model-analysis-text-wrap is-payload',
+        }, slots.default())
+      }
+      return h('div', { ref: textWrap, style: wrapStyle, class: 'chatluna-studio-model-analysis-text-wrap' }, [
+        h('pre', {}, blockProps.occurrence
+          ? renderModelRequestOccurrence(blockProps.value, blockProps.occurrence)
+          : highlightText(blockProps.value, blockProps.searchQuery)),
+      ])
+    }
 
     return () => h('section', {
       class: ['chatluna-studio-model-analysis-section', { 'is-collapsed': collapsible.value && !expanded.value, 'is-compact': blockProps.compact }],
     }, [
       blockProps.label && h('strong', blockProps.label),
-      h('div', { class: 'chatluna-studio-model-analysis-text-wrap' }, [
-        h('pre', {
-          ref: textElement,
-          style: { '--chatluna-studio-model-analysis-collapse-height': collapsedHeight.value },
-        }, blockProps.occurrence
-          ? renderModelRequestOccurrence(blockProps.value, blockProps.occurrence)
-          : highlightText(blockProps.value, blockProps.searchQuery)),
-        collapsible.value && h('button', {
-          type: 'button',
-          class: 'chatluna-studio-model-analysis-expand',
-          onClick: () => { expanded.value = !expanded.value },
-        }, [
-          expanded.value ? '收起' : `展开全部（${blockProps.value.length} 字符）`,
-          h(IconChevronDown, { size: 12, 'aria-hidden': 'true' }),
-        ]),
+      renderContent(),
+      collapsible.value && h('button', {
+        type: 'button',
+        class: 'chatluna-studio-model-analysis-expand',
+        onClick: () => { expanded.value = !expanded.value },
+      }, [
+        expanded.value ? '收起' : `展开全部（${blockProps.value.length} 字符）`,
+        h(IconChevronDown, { size: 12, 'aria-hidden': 'true' }),
       ]),
     ])
   },
@@ -1215,7 +1259,7 @@ const AnalysisContentParts = defineComponent({
         ])
       }
       const label = part.kind === 'text' ? undefined : part.kind === 'image' ? '图片加载失败' : part.kind
-      return h(AnalysisTextBlock, {
+      return h(AnalysisContentBlock, {
         key: index,
         label,
         value: part.value,

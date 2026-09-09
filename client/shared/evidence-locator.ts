@@ -283,7 +283,7 @@ function prepareModelAnalysisTarget(
       ...(messageTarget ? [messageTarget] : []),
       ...(response ? [MODEL_ANALYSIS_RESPONSE_TARGET] : []),
     ],
-    // occurrence mark 自己负责测量；所属消息 target 负责驱动 AnalysisTextBlock 强制展开。
+    // occurrence mark 自己负责测量；所属消息 target 负责驱动 AnalysisContentBlock 强制展开。
     expandTargets: occurrence && messageTarget ? [messageTarget, target] : [target],
   }
 }

@@ -2099,7 +2099,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-heading,
 .chatluna-studio-model-analysis-card > header,
 .chatluna-studio-model-analysis-tool-summary,
-.chatluna-studio-model-analysis-tool-call > div,
+.chatluna-studio-model-analysis-tool-call-header,
 .chatluna-studio-model-analysis-response-meta {
   display: flex;
   align-items: center;
@@ -2263,7 +2263,9 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-section > strong { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); text-transform: uppercase; }
 .chatluna-studio-model-analysis-section pre, .chatluna-studio-model-analysis-tool-call pre { margin: 0; overflow-wrap: anywhere; color: var(--chatluna-studio-text); font-family: var(--chatluna-studio-font-mono); font-size: var(--chatluna-studio-font-md); line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: text; }
 .chatluna-studio-model-analysis-text-wrap { position: relative; }
-.chatluna-studio-model-analysis-section.is-collapsed .chatluna-studio-model-analysis-text-wrap > pre {
+/* 折叠壳挂在 text-wrap 上，正文（pre）与工具 JSON（结构树）因此共用同一套裁切与渐隐。
+   展开按钮是 text-wrap 的兄弟节点，不会被这层 overflow 一起裁掉。 */
+.chatluna-studio-model-analysis-section.is-collapsed .chatluna-studio-model-analysis-text-wrap {
   max-height: var(--chatluna-studio-model-analysis-collapse-height);
   overflow: hidden;
   /* 用 mask 把裁切末行渐隐到透明。半透明实色遮罩会让被 overflow 裁掉的字形笔画透出来，
@@ -2281,10 +2283,9 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   border-top-width: 2px;
   border-top-color: var(--chatluna-studio-role);
 }
-.chatluna-studio-model-analysis-tool-call > div { justify-content: space-between; gap: 12px; }
-.chatluna-studio-model-analysis-tool-call.is-call > div > strong,
-.chatluna-studio-model-analysis-tool-call.is-result > div > strong { color: var(--chatluna-studio-role); }
-.chatluna-studio-model-analysis-tool-call span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-tool-call-header { justify-content: space-between; gap: 12px; }
+.chatluna-studio-model-analysis-tool-call-header > strong { color: var(--chatluna-studio-role); }
+.chatluna-studio-model-analysis-tool-call-header span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-link { width: max-content; padding: 0; border: 0; color: var(--chatluna-studio-accent); background: transparent; font-size: var(--chatluna-studio-font-xs); text-decoration: underline; }
 .chatluna-studio-model-analysis-response-meta { gap: 16px; padding: 10px 16px; border-top: 1px solid var(--chatluna-studio-border); color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-json { min-height: 180px; padding: 12px; }
@@ -2729,18 +2730,15 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   padding: 12px;
 }
 
-/*
- * 工具载荷的结构视图。
- *
- * 与工具 Schema 同一副几何，但要额外压住高度：一次搜索的返回值可以有几十条结果，整棵树摊开时
- * 会把整张卡片顶到几屏高，把它后面的消息全部推出视野。超过这个高度就在载荷内部滚动，卡片本身
- * 仍然保持可扫读的高度。
- */
-.chatluna-studio-model-analysis-tool-payload.chatluna-studio-model-request-json-viewer {
-  min-height: 0;
-  max-height: 420px;
-  padding: 12px;
-  overscroll-behavior: contain;
+/* 工具 JSON 直接铺在所属卡片中，由外层详情滚动。不得复用带边框、内边距与滚动的
+   json-viewer，也不能套用标题的 flex 居中：限高后居中会把长树的开头推到滚动起点之外。
+   字号与行高显式对齐 JSON 树：折叠壳按行高判断是否超过 12 行，继承来的 `normal`
+   解析不出数值，会让自动省略整个失效。 */
+.chatluna-studio-model-analysis-tool-payload {
+  min-width: 0;
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.6;
+  user-select: text;
 }
 
 @container (max-width: 680px) {
