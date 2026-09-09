@@ -201,7 +201,8 @@
   font-size: var(--chatluna-studio-font-md);
 }
 
-.chatluna-studio-model-request-filter-trigger {
+/* 同上：圆角与 Button 基线的 `rounded-md` 同特异性，裸单类会在未分层工具类后加载时输掉。 */
+.chatluna-studio-model-request-list-tools .chatluna-studio-model-request-filter-trigger {
   border-radius: 8px;
 }
 
@@ -211,7 +212,8 @@
   background: color-mix(in srgb, var(--chatluna-studio-accent) 10%, var(--chatluna-studio-surface));
 }
 
-.chatluna-studio-model-request-filter-popover {
+/* 浮层自带 `w-72`、`p-4` 这类工具类，宽度与内边距都要跟它们抢；限定到浮层根类上避免同特异性。 */
+.studio-popover-content.chatluna-studio-model-request-filter-popover {
   display: grid;
   gap: 12px;
   width: 280px;
@@ -223,7 +225,8 @@
   font-weight: 600;
 }
 
-.chatluna-studio-model-request-control {
+/* SelectTrigger 自带 `w-fit`：裸单类与它同特异性，输掉时下拉宽度会缩回内容宽度。 */
+.chatluna-studio-model-request-filter-popover .chatluna-studio-model-request-control {
   width: 100%;
 }
 
@@ -589,7 +592,16 @@
   gap: 6px;
 }
 
-.chatluna-studio-model-request-header-toggle {
+/* 开关的两处形态都是为了让文案钉在值列左缘，与相邻行的值对齐：
+   1. `justify-self: start` 让按钮收缩到内容宽度。按栅格默认的 stretch 铺满值列时，文案位置由
+      `justify-content` 决定，而 Button 基线自带 `justify-center`；收缩后按钮左缘就是文案左缘，
+      对齐不再依赖任何对齐属性的胜负。
+   2. 选择器带父级限定。裸单类与 Button 自带的工具类同特异性，胜负只看加载顺序：本仓库的工具类在
+      `@layer utilities` 里压得住，但同一个控制台里其他插件的 Tailwind v3 产物是未分层的，
+      后加载时 `.justify-center` / `.px-2` / `.text-xs` 会反过来赢，表现是同一处开关在不同环境里
+      一会儿居左一会儿居中、字号与内边距也跟着变，两边都不报错。 */
+.chatluna-studio-model-request-header-value .chatluna-studio-model-request-header-toggle {
+  justify-self: start;
   justify-content: flex-start;
   gap: 6px;
   min-width: 0;
@@ -853,7 +865,7 @@
   padding-right: 40px;
 }
 
-.chatluna-studio-model-trajectory-inspector-close {
+.chatluna-studio-model-trajectory-inspector-actions .chatluna-studio-model-trajectory-inspector-close {
   position: absolute;
   top: 0;
   right: 0;
@@ -1473,7 +1485,8 @@
   stroke: color-mix(in srgb, #b91c1c 58%, var(--chatluna-studio-muted));
 }
 
-.chatluna-studio-model-request-capacity-tip {
+/* Tooltip 浮层自带 `w-fit`、`px-3`、`py-1.5`，宽度与内边距都要跟它们抢。 */
+[data-slot="tooltip-content"].chatluna-studio-model-request-capacity-tip {
   width: max-content;
   padding: 8px 12px;
 }
@@ -1538,7 +1551,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   color: #fca5a5;
 }
 
-.chatluna-studio-model-request-more {
+.chatluna-studio-model-request-list .chatluna-studio-model-request-more {
   width: 100%;
 }
 
@@ -2696,7 +2709,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   min-height: 18px;
   overflow: visible;
 }
-.chatluna-studio-model-analysis-collapse {
+:is(.chatluna-studio-model-analysis-card, .chatluna-studio-model-analysis-variable-card) .chatluna-studio-model-analysis-collapse {
   flex: 0 0 auto;
 }
 .chatluna-studio-model-analysis-collapse svg {

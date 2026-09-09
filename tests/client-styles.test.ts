@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { listClientStylesheets, readClientStyleBlocks } from './helpers/client-stylesheets'
+import { listClientStylesheets, readClientStyleBlocks, readClientTemplates } from './helpers/client-stylesheets'
 
 /**
  * 客户端样式的加载结构与表面边界。
@@ -74,6 +74,33 @@ function selectorsOf(source: string): string[] {
   return [...source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(?:^|[{}])([^{}]*)\{/g)]
     .flatMap((match) => splitTopLevel(match[1]!.trim(), /,/))
     .filter((selector) => selector && !selector.startsWith('@') && !selector.includes(';'))
+}
+
+/** 本插件的 shadcn 控件封装导出的组件名：模板里的这些标签渲染出的元素带着组件自己的工具类。 */
+function shadcnControlTags(): string[] {
+  const directory = resolve('client/components/ui')
+  return readdirSync(directory).flatMap((entry) => {
+    const index = join(directory, entry, 'index.ts')
+    if (!existsSync(index)) return []
+    return [...readFileSync(index, 'utf8').matchAll(/export \{ default as (\w+) \}/g)].map((match) => match[1]!)
+  })
+}
+
+/** 模板给 shadcn 控件加的本插件类名。状态类走 `:class` 绑定，本身就是复合选择器，不在此列。 */
+function shadcnControlClasses(): string[] {
+  const tags = shadcnControlTags()
+  const classes = new Set<string>()
+  for (const { source } of readClientTemplates()) {
+    for (const match of source.matchAll(/<([A-Z]\w*)\b([^>]*)>/g)) {
+      if (!tags.includes(match[1]!)) continue
+      const attribute = match[2]!.match(/\sclass="([^"]*)"/)
+      if (!attribute) continue
+      for (const token of attribute[1]!.split(/\s+/)) {
+        if (token.startsWith('chatluna-studio-')) classes.add(token)
+      }
+    }
+  }
+  return [...classes].sort()
 }
 
 describe('客户端样式加载', () => {
@@ -177,5 +204,28 @@ describe('客户端样式加载', () => {
       .filter(({ source }) => source.replace(/\/\*[\s\S]*?\*\//g, '').includes(':global('))
       .map(({ path }) => path)
     expect(offenders, ':global() 会被整条替换成括号内的第一段；暗色钩子请写 [data-color-mode] 或 body 属性').toEqual([])
+  })
+
+  /**
+   * shadcn 控件封装把自己的 Tailwind 工具类写在元素上：Button 基线里有 `justify-center`、`px-2`、
+   * `text-xs`、`rounded-md`，SelectTrigger 有 `w-fit`，TooltipContent 有 `w-fit px-3 py-1.5`。本插件
+   * 再给同一个元素加一个类去覆盖这些属性时，裸单类选择器与工具类同特异性，胜负只看加载顺序——
+   * 本仓库的工具类在 `@layer utilities` 里，压得住自己的产物，但同一个控制台里其他插件的
+   * Tailwind v3 产物是未分层的，后加载时反过来赢。
+   *
+   * 表现是同一处控件的对齐、字号、内边距或宽度随装了哪些插件、按什么顺序加载而变，两边都不报错，
+   * 而且只在装了那个插件的环境里复现。判定不看具体属性：控件自带哪些工具类由上游封装决定，改一次
+   * 依赖就可能新增一个抢同一属性的类。带上父级或属性限定后特异性高于任何裸工具类，级联就定了。
+   */
+  it('给 shadcn 控件加的类不写成裸单类规则，避免与控件自带工具类同特异性', () => {
+    const controlClasses = shadcnControlClasses()
+    expect(controlClasses.length, '模板里应当存在给 shadcn 控件加类名的用法').toBeGreaterThan(0)
+    const offenders: string[] = []
+    for (const { path, source } of styleSources()) {
+      for (const selector of selectorsOf(source)) {
+        if (controlClasses.some((one) => selector === `.${one}`)) offenders.push(`${path}: ${selector}`)
+      }
+    }
+    expect(offenders, '这些规则要跟控件自带的工具类抢同一批属性，请补上父级或属性限定').toEqual([])
   })
 })

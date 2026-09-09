@@ -26,6 +26,22 @@ export function readClientStylesheets(): string[] {
 }
 
 /**
+ * 单文件组件的模板源码。
+ *
+ * 有一类不变量只能把模板和样式对着看才判定得出来：类名落在哪种元素上决定了它要跟谁抢级联
+ * （例如 shadcn 控件自带 Tailwind 工具类），单看样式表看不出这层关系。
+ */
+export function readClientTemplates(directory = 'client'): { path: string, source: string }[] {
+  return readdirSync(resolve(directory), { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return readClientTemplates(path)
+    if (!entry.name.endsWith('.vue')) return []
+    const template = readFileSync(resolve(path), 'utf8').match(/<template>([\s\S]*)<\/template>/)
+    return template ? [{ path, source: template[1]! }] : []
+  }).sort((left, right) => left.path.localeCompare(right.path))
+}
+
+/**
  * 单文件组件里 `<style>` 块的源码，标注成 `路径#序号`。
  *
  * 这一面不在 `listClientStylesheets()` 里：那份只扫 `.css`。scoped 块编译后仍然进同一张产物表，
