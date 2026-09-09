@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-studio",
   "description": "在 Koishi 控制台中查看 ChatLuna 真实模型请求并编辑预设",
-  "version": "1.1.6",
+  "version": "1.1.8",
   "type": "commonjs",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
