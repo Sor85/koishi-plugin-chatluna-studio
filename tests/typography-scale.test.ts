@@ -103,6 +103,13 @@ describe('排版标度', () => {
     expect(offenders).toEqual([])
   })
 
+  it('响应预览的工具调用 ID 落在标度上，不被 preflight 的 small{80%} 派生成 10.4px', () => {
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+    const rule = styles.slice(styles.indexOf('.chatluna-studio-model-response-tool small {')).split('}')[0]
+
+    expect(rule).toContain('font-size: var(--chatluna-studio-font-xs)')
+  })
+
   it('工具定义摘要三段文本各占一档字号', () => {
     const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
     const rule = (selector: string) => styles.slice(styles.indexOf(selector)).split('}')[0]

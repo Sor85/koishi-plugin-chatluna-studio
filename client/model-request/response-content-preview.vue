@@ -24,11 +24,14 @@
       </header>
       <div class="chatluna-studio-model-response-tool-list">
         <article v-for="tool in response.toolCalls" :key="tool.evidenceId" class="chatluna-studio-model-response-tool">
-          <div>
+          <div class="chatluna-studio-model-response-tool-header">
             <strong>{{ tool.name }}</strong>
             <small v-if="tool.id">{{ tool.id }}</small>
           </div>
-          <pre v-if="tool.arguments">{{ tool.arguments }}</pre>
+          <div v-if="payloadTree(`call:${tool.evidenceId}`, 'arguments', tool.arguments)" class="chatluna-studio-model-response-tool-payload">
+            <ModelRequestJsonTree :node="payloadTree(`call:${tool.evidenceId}`, 'arguments', tool.arguments)!" :open="true" :root="true" :strings-expanded="true" />
+          </div>
+          <pre v-else-if="tool.arguments">{{ tool.arguments }}</pre>
         </article>
       </div>
     </section>
@@ -41,11 +44,14 @@
       </header>
       <div class="chatluna-studio-model-response-tool-list">
         <article v-for="result in response.toolResults" :key="result.evidenceId" class="chatluna-studio-model-response-tool">
-          <div>
+          <div class="chatluna-studio-model-response-tool-header">
             <strong>{{ result.name || '工具结果' }}</strong>
             <small v-if="result.id">{{ result.id }}</small>
           </div>
-          <pre v-if="result.content">{{ result.content }}</pre>
+          <div v-if="payloadTree(`result:${result.evidenceId}`, 'result', result.content)" class="chatluna-studio-model-response-tool-payload">
+            <ModelRequestJsonTree :node="payloadTree(`result:${result.evidenceId}`, 'result', result.content)!" :open="true" :root="true" :strings-expanded="true" />
+          </div>
+          <pre v-else-if="result.content">{{ result.content }}</pre>
         </article>
       </div>
     </section>
@@ -66,13 +72,33 @@
 
 <script setup lang="ts">
 import { IconBrain, IconMessage, IconTool } from '@tabler/icons-vue'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { Badge } from '#client/components/ui/badge'
+import ModelRequestJsonTree from './json-tree.vue'
 import type { ModelConversationResponse } from './conversation'
+import { buildModelRequestJsonTree, type ModelRequestJsonNode } from './json'
+import { resolveModelRequestToolPayload } from './tool-payload'
 
 const props = defineProps<{
   response: ModelConversationResponse
 }>()
+
+/**
+ * 工具载荷的结构树按证据身份缓存，与分析视图同一套判定：解析不出结构时给 undefined，
+ * 调用处退回原文。每次重渲染现算会换掉节点引用，JSON 树内部的展开态会随之丢失。
+ */
+let payloadTrees = new Map<string, ModelRequestJsonNode>()
+watch(() => props.response, () => { payloadTrees = new Map() })
+
+function payloadTree(cacheKey: string, rootKey: string, value: string | undefined): ModelRequestJsonNode | undefined {
+  const cached = payloadTrees.get(cacheKey)
+  if (cached) return cached
+  const payload = resolveModelRequestToolPayload(value)
+  if (payload.kind !== 'json') return undefined
+  const tree = buildModelRequestJsonTree(payload.value, rootKey)
+  payloadTrees.set(cacheKey, tree)
+  return tree
+}
 
 const USAGE_LABELS = [
   ['inputTokens', '输入'],

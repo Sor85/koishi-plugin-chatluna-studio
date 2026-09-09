@@ -20,6 +20,19 @@
         <AnalysisHighlightedText :value="callId || '无调用 ID'" :query="query" />
       </span>
       <span class="chatluna-studio-model-analysis-chars">{{ characters }} chars</span>
+      <!-- 定义入口属于卡片操作，不在正文下方另起一行，避免抬高底部的展开按钮。 -->
+      <Button
+        v-if="showLocateTool"
+        variant="ghost"
+        size="xs"
+        class="chatluna-studio-model-analysis-locate-tool"
+        aria-label="查看工具定义"
+        title="查看工具定义"
+        @click.stop="emit('locate-tool')"
+      >
+        <IconFileCode data-icon="inline-start" aria-hidden="true" />
+        <span>查看工具定义</span>
+      </Button>
       <button
         type="button"
         :aria-expanded="!isCollapsed"
@@ -47,20 +60,13 @@
         :force-expanded="forceExpanded"
         compact
       />
-      <button
-        v-if="showLocateTool"
-        type="button"
-        class="chatluna-studio-model-analysis-link"
-        @click.stop="emit('locate-tool')"
-      >
-        查看工具定义
-      </button>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { IconChevronDown } from '@tabler/icons-vue'
+import { IconChevronDown, IconFileCode } from '@tabler/icons-vue'
+import { Button } from '../components/ui/button'
 import ModelRequestJsonTree from './json-tree.vue'
 import { AnalysisContentBlock, AnalysisHighlightedText } from './analysis-content-block'
 import type { ModelRequestJsonNode } from './json'

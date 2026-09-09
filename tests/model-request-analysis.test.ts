@@ -653,6 +653,39 @@ describe('模型请求分析展示模型', () => {
     expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call span')
   })
 
+  it('工具卡片头部优先保留角色与工具名，调用 ID 仅占剩余空间', () => {
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+    const rule = (selector: string) => styles.slice(styles.indexOf(`${selector} {`)).split('}')[0]
+
+    const role = rule('.chatluna-studio-model-analysis-card.is-tool-call > header > .chatluna-studio-model-analysis-role')
+    expect(role).toContain('flex: 0 0 auto;')
+    expect(role).toContain('white-space: nowrap;')
+    expect(rule('.chatluna-studio-model-analysis-tool-card-name')).toContain('flex: 0 1 auto;')
+    const callId = rule('.chatluna-studio-model-analysis-tool-card-id')
+    expect(callId).toContain('min-width: 0;')
+    expect(callId).toContain('text-overflow: ellipsis;')
+    expect(callId).toContain('white-space: nowrap;')
+    expect(styles).toContain('.chatluna-studio-model-analysis-tool-card-id { flex: 1 1 0%;')
+  })
+
+  it('查看工具定义位于头部操作区，不占用正文展开按钮下方的空间', () => {
+    const toolCard = readFileSync(resolve('client/model-request/analysis-tool-card.vue'), 'utf8')
+    const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
+    const header = toolCard.match(/<header[\s\S]*?<\/header>/)?.[0]
+    const body = toolCard.slice(toolCard.indexOf('<div v-show="!isCollapsed"'))
+
+    expect(header).toContain('class="chatluna-studio-model-analysis-locate-tool"')
+    expect(header).toContain('variant="ghost"')
+    expect(header).toContain('size="xs"')
+    expect(header).toContain('aria-label="查看工具定义"')
+    expect(header).toContain('@click.stop="emit(\'locate-tool\')"')
+    expect(header).toContain('<IconFileCode data-icon="inline-start" aria-hidden="true" />')
+    expect(body).not.toContain('v-if="showLocateTool"')
+    expect(styles).not.toContain('.chatluna-studio-model-analysis-link')
+    expect(styles).toContain('@container (max-width: 520px)')
+    expect(styles).toContain('.chatluna-studio-model-analysis-locate-tool > span { display: none; }')
+  })
+
   /**
    * 搜索命中的载荷退回原文。
    *

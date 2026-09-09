@@ -203,6 +203,21 @@ describe('Studio 模型请求工作台', () => {
     expect(responsePreviewSource).toContain('思考内容')
     expect(responsePreviewSource).toContain('工具调用')
     expect(responsePreviewSource).toContain('结束原因')
+    // 响应预览的工具载荷与分析视图共用同一套结构树与退回原文判定。
+    expect(responsePreviewSource).toContain('<ModelRequestJsonTree')
+    expect(responsePreviewSource).toContain('resolveModelRequestToolPayload')
+    expect(responsePreviewSource.match(/class="chatluna-studio-model-response-tool-payload"/g)).toHaveLength(2)
+    expect(responsePreviewSource.match(/<pre v-else-if=/g)).toHaveLength(2)
+    expect(responsePreviewSource).not.toContain('<pre v-if="tool.arguments">')
+    expect(responsePreviewSource).not.toContain('<pre v-if="result.content">')
+    const payloadRule = styles.slice(styles.indexOf('.chatluna-studio-model-response-tool-payload {')).split('}')[0]
+    expect(payloadRule).toContain('font-size: var(--chatluna-studio-font-md);')
+    expect(payloadRule).toContain('line-height: 1.6;')
+    expect(payloadRule).not.toMatch(/max-height:|overflow:|border:/)
+    // 标题行按类命名：`> div` 会连载荷容器一起命中，把 JSON 树套进 flex 并多画一条分隔线。
+    expect(responsePreviewSource.match(/class="chatluna-studio-model-response-tool-header"/g)).toHaveLength(2)
+    expect(styles).toContain('.chatluna-studio-model-response-tool-header {')
+    expect(styles).not.toContain('.chatluna-studio-model-response-tool > div')
     expect(workspaceSource).toMatch(/:node="requestTree"[\s\S]*:images-preview="true"/)
     expect(workspaceSource).not.toMatch(/:node="headersTree"[\s\S]{0,180}:images-preview="true"/)
     expect(workspaceSource).not.toMatch(/:node="responseTree"[\s\S]{0,180}:images-preview="true"/)

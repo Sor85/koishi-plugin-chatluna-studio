@@ -1713,7 +1713,8 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   background: var(--chatluna-studio-surface);
 }
 
-.chatluna-studio-model-response-tool > div {
+/* 标题行按类命名。用 `> div` 会连载荷容器一起命中，把 JSON 树套进 flex 并多画一条分隔线。 */
+.chatluna-studio-model-response-tool-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -1722,9 +1723,21 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
   border-bottom: 1px solid var(--chatluna-studio-border);
 }
 
+/* 与分析视图的工具载荷同一形态：铺在卡片里由外层滚动，显式声明字号与行高，
+   不套用 json-viewer 的边框、内边距与独立滚动。 */
+.chatluna-studio-model-response-tool-payload {
+  min-width: 0;
+  padding: 12px;
+  font-size: var(--chatluna-studio-font-md);
+  line-height: 1.6;
+  user-select: text;
+}
+
+/* 显式取标度档位：缺省时 Tailwind preflight 的 small{80%} 会派生出 10.4px 这种标度外字号。 */
 .chatluna-studio-model-response-tool small {
   overflow: hidden;
   color: var(--chatluna-studio-muted);
+  font-size: var(--chatluna-studio-font-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2286,18 +2299,23 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-tool-call-header { justify-content: space-between; gap: 12px; }
 .chatluna-studio-model-analysis-tool-call-header > strong { color: var(--chatluna-studio-role); }
 .chatluna-studio-model-analysis-tool-call-header span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
-.chatluna-studio-model-analysis-link { width: max-content; padding: 0; border: 0; color: var(--chatluna-studio-accent); background: transparent; font-size: var(--chatluna-studio-font-xs); text-decoration: underline; }
+.chatluna-studio-model-analysis-card.is-tool-call { container-type: inline-size; }
+.chatluna-studio-model-analysis-card.is-tool-call > header > .chatluna-studio-model-analysis-role { flex: 0 0 auto; white-space: nowrap; }
+/* 按卡片宽度而非视口宽度收起文案，窄详情栏仍保留完整的可访问名称。 */
+@container (max-width: 520px) {
+  .chatluna-studio-model-analysis-locate-tool > span { display: none; }
+}
 .chatluna-studio-model-analysis-tool-card .chatluna-studio-model-analysis-formatted { display: grid; gap: 8px; padding: 14px 12px; }
 .chatluna-studio-model-analysis-tool-card-name,
 .chatluna-studio-model-analysis-tool-card-id {
-  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.chatluna-studio-model-analysis-tool-card-name { color: var(--chatluna-studio-role); font-weight: 600; }
-.chatluna-studio-model-analysis-tool-card-id { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+/* ID 只分配工具名和操作区之外的剩余空间；零基准避免长 ID 按内容宽度挤压工具名。 */
+.chatluna-studio-model-analysis-tool-card-name { flex: 0 1 auto; color: var(--chatluna-studio-role); font-weight: 600; }
+.chatluna-studio-model-analysis-tool-card-id { flex: 1 1 0%; color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-card.is-tool-call .chatluna-studio-model-analysis-collapse { margin-left: auto; }
 .chatluna-studio-model-analysis-response-meta { gap: 16px; padding: 10px 16px; border-top: 1px solid var(--chatluna-studio-border); color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-json { min-height: 180px; padding: 12px; }
