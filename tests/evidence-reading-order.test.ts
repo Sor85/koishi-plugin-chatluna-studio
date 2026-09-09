@@ -133,7 +133,7 @@ describe('证据阅读顺序', () => {
 
     expect(view).toContain('STUDIO_EVIDENCE_READING_ORDER.flatMap')
     expect(view).toContain('v-for="block in analysisBlocks"')
-    expect(view).toContain('v-for="message in block.messages"')
+    expect(view).toContain('<template v-for="message in block.messages"')
     // 三块非消息分区各归自己那一档，不再固定接在消息列表末尾。
     expect(view).toContain('v-if="block.variables"')
     expect(view).toContain('v-if="block.response"')

@@ -246,12 +246,14 @@ describe('模型请求对话视图归一化', () => {
       id: 'call-7',
       name: 'lookup',
       arguments: '{"id":7}',
+      characters: 8,
     }])
     expect(response?.toolResults).toEqual([{
       evidenceId: 'res:tool-result:output.1',
       id: 'call-7',
       name: 'lookup',
       content: '{\n  "ok": true\n}',
+      characters: 16,
       path: ['output', '1'],
       raw: { type: 'function_call_output', call_id: 'call-7', name: 'lookup', output: { ok: true } },
     }])

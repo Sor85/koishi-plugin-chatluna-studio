@@ -2099,7 +2099,6 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-heading,
 .chatluna-studio-model-analysis-card > header,
 .chatluna-studio-model-analysis-tool-summary,
-.chatluna-studio-model-analysis-tool-call-header,
 .chatluna-studio-model-analysis-response-meta {
   display: flex;
   align-items: center;
@@ -2225,6 +2224,7 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-card.is-assistant { --chatluna-studio-role: var(--chatluna-studio-role-assistant); }
 .chatluna-studio-model-analysis-card.is-response { --chatluna-studio-role: var(--chatluna-studio-role-response); }
 .chatluna-studio-model-analysis-card.is-tool-result { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }
+.chatluna-studio-model-analysis-card.is-tool-call { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }
 .chatluna-studio-model-analysis-tool-card { --chatluna-studio-role: var(--chatluna-studio-role-tool); }
 .chatluna-studio-model-analysis-card.is-located,
 .chatluna-studio-model-analysis-tool-card.is-located,
@@ -2287,6 +2287,18 @@ body[data-chatluna-studio-color-scheme="dark"] .chatluna-studio-model-request-ca
 .chatluna-studio-model-analysis-tool-call-header > strong { color: var(--chatluna-studio-role); }
 .chatluna-studio-model-analysis-tool-call-header span { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-link { width: max-content; padding: 0; border: 0; color: var(--chatluna-studio-accent); background: transparent; font-size: var(--chatluna-studio-font-xs); text-decoration: underline; }
+.chatluna-studio-model-analysis-tool-card .chatluna-studio-model-analysis-formatted { display: grid; gap: 8px; padding: 14px 12px; }
+.chatluna-studio-model-analysis-tool-card-name,
+.chatluna-studio-model-analysis-tool-card-id {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chatluna-studio-model-analysis-tool-card-name { color: var(--chatluna-studio-role); font-weight: 600; }
+.chatluna-studio-model-analysis-tool-card-id { color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
+.chatluna-studio-model-analysis-card.is-tool-call .chatluna-studio-model-analysis-collapse { margin-left: auto; }
 .chatluna-studio-model-analysis-response-meta { gap: 16px; padding: 10px 16px; border-top: 1px solid var(--chatluna-studio-border); color: var(--chatluna-studio-muted); font-size: var(--chatluna-studio-font-xs); }
 .chatluna-studio-model-analysis-json { min-height: 180px; padding: 12px; }
 .chatluna-studio-model-analysis-json .chatluna-studio-model-request-json-viewer { min-height: 160px; }

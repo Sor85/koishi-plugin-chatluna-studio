@@ -227,8 +227,8 @@ describe('模型请求分析展示模型', () => {
     expect(view).toContain('class="chatluna-studio-model-analysis-nav-group"')
     expect(view).toContain('`is-${group.key}`')
     expect(view).toContain(':class="`is-${item.kind}`"')
-    expect(view).toContain('class="chatluna-studio-model-analysis-tool-call is-call"')
-    expect(view).toContain('class="chatluna-studio-model-analysis-tool-call is-result"')
+    expect(styles).toContain('.chatluna-studio-model-analysis-card.is-tool-call { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }')
+    expect(styles).toContain('.chatluna-studio-model-analysis-card.is-tool-result { --chatluna-studio-role: var(--chatluna-studio-role-tool-interaction); }')
     expect(trajectory).toContain("row.source === 'response' ? 'is-response' : ''")
     expect(styles).toContain('.chatluna-studio-model-trajectory-row.is-tool-call .chatluna-studio-model-trajectory-kind,')
   })
@@ -575,21 +575,26 @@ describe('模型请求分析展示模型', () => {
    * 转义上，只在肉眼比对另外两处时才看得出来。`v-else` 分支同样是契约的一部分——截断的参数与
    * 纯文本结果必须仍能按原文读到。
    */
-  it('三处工具载荷默认按结构显示，解析不出结构时退回原文', () => {
+  it('四处工具载荷默认按结构显示，解析不出结构时退回原文', () => {
     const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const toolCard = readFileSync(resolve('client/model-request/analysis-tool-card.vue'), 'utf8')
+    const block = readFileSync(resolve('client/model-request/analysis-content-block.ts'), 'utf8')
     const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
 
-    for (const accessor of ['callArgumentsTree(call)', 'toolResultTree(result)']) {
-      expect(view).toContain(`v-if="${accessor}"`)
-      expect(view).toContain(`:node="${accessor}!"`)
-    }
+    // 工具调用与工具结果各有一个 v-if / v-else 对，由 analysis-tool-card 统一提供。
+    expect(toolCard).toContain('v-if="payload"')
+    expect(toolCard).toContain('v-else')
+    expect(toolCard).toContain(':node="payload"')
     // 工具结果消息排在精确 occurrence 之后：occurrence 的范围按正文偏移量算，只有原文能标出来。
     expect(view).toContain('v-else-if="messagePayloadTree(message)"')
     expect(view).toContain(':node="messagePayloadTree(message)!"')
-    expect(view.match(/class="chatluna-studio-model-analysis-tool-payload"/g)).toHaveLength(4)
+    // 请求工具结果消息一处（analysis-view.vue）+ 工具卡片一处（复用组件，调用三次）。
+    expect(view.match(/class="chatluna-studio-model-analysis-tool-payload"/g)).toHaveLength(1)
+    expect(toolCard.match(/class="chatluna-studio-model-analysis-tool-payload"/g)).toHaveLength(1)
     expect(view).not.toContain('chatluna-studio-model-analysis-tool-payload chatluna-studio-model-request-json-viewer')
-    // 请求侧与响应侧的工具调用各有一个原文退路，工具结果一个，合计三处 v-else。
-    expect(view.match(/<AnalysisContentBlock\s+v-else(?!-)/g)).toHaveLength(3)
+    // 工具卡片有一处 v-else 退路（原文退回）；请求工具结果消息有一处退路在 analysis-view 里。
+    expect(toolCard.match(/<AnalysisContentBlock\s+v-else(?!-)/g)).toHaveLength(1)
+    expect(view).toContain('<AnalysisContentBlock\n                v-else-if="message.content"')
     expect(view).not.toContain('parseAnalysisJson')
     const payloadRule = styles.match(/\.chatluna-studio-model-analysis-tool-payload \{([^}]*)\}/s)?.[1]
     expect(payloadRule).toBeDefined()
@@ -606,20 +611,24 @@ describe('模型请求分析展示模型', () => {
    */
   it('工具 JSON 与长正文共用折叠壳，超过 12 行时自动省略', () => {
     const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const toolCard = readFileSync(resolve('client/model-request/analysis-tool-card.vue'), 'utf8')
+    const block = readFileSync(resolve('client/model-request/analysis-content-block.ts'), 'utf8')
     const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
 
-    // 四处载荷（请求工具结果消息、请求/响应工具调用、响应工具结果）都走插槽，不再是裸 div。
-    expect(view.match(/<AnalysisContentBlock[^>]*>\s*<div class="chatluna-studio-model-analysis-tool-payload">/gs)).toHaveLength(4)
+    // 工具卡片有 1 处 tool-payload slot；工具卡片被调用了 3 次（请求工具调用、响应工具调用、响应工具结果）。
+    expect(toolCard.match(/class="chatluna-studio-model-analysis-tool-payload"/g)).toHaveLength(1)
+    // 请求工具结果消息 1 处 payload slot（在 analysis-view.vue 里）。
+    expect(view.match(/<AnalysisContentBlock[^>]*>\s*<div class="chatluna-studio-model-analysis-tool-payload">/gs)).toHaveLength(1)
     expect(view).not.toMatch(/<div v-if="(callArgumentsTree\(call\)|toolResultTree\(result\))" class="chatluna-studio-model-analysis-tool-payload">/)
-    expect(view).toContain('setup(blockProps, { slots })')
-    expect(view).toContain('slots.default()')
+    expect(block).toContain('setup(blockProps, { slots })')
+    expect(block).toContain('slots.default()')
     // 折叠判定读 text-wrap 的第一个子元素：正文是 pre，载荷是结构树，行高都取自它自己。
-    expect(view).toContain('return textWrap.value?.firstElementChild as HTMLElement | undefined')
-    expect(view).toContain('exceedsAnalysisLineLimit(element.scrollHeight, lineHeight, blockProps.maxLines)')
+    expect(block).toContain('return textWrap.value?.firstElementChild as HTMLElement | undefined')
+    expect(block).toContain('exceedsAnalysisLineLimit(element.scrollHeight, lineHeight, blockProps.maxLines)')
     // 观察内容节点而不是被 max-height 裁住的 text-wrap：折叠态下裁后的盒子不随树的展开变化。
-    expect(view).toMatch(/const element = measuredContent\(\)[\s\S]{0,400}?resizeObserver\.observe\(element\)/)
-    expect(view).not.toContain('resizeObserver.observe(textWrap.value)')
-    expect(view).toContain('`展开全部（${blockProps.value.length} 字符）`')
+    expect(block).toMatch(/const element = measuredContent\(\)[\s\S]{0,400}?resizeObserver\.observe\(element\)/)
+    expect(block).not.toContain('resizeObserver.observe(textWrap.value)')
+    expect(block).toContain('`展开全部（${blockProps.value.length} 字符）`')
     // 载荷字号与行高必须显式声明，否则继承来的 `normal` 解析不出数值，折叠判定整体失效。
     const payloadRule = styles.match(/\.chatluna-studio-model-analysis-tool-payload \{([^}]*)\}/s)?.[1]
     expect(payloadRule).toContain('line-height: 1.6;')
@@ -629,13 +638,17 @@ describe('模型请求分析展示模型', () => {
     expect(styles).not.toContain('.chatluna-studio-model-analysis-text-wrap > pre {')
   })
 
-  it('工具标题布局与文案样式不泄漏到 JSON 载荷，避免长树居中后首尾被裁切', () => {
+  it('工具卡片自带折叠与原文退路，载荷样式不再嵌套标题选择器', () => {
     const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const toolCard = readFileSync(resolve('client/model-request/analysis-tool-card.vue'), 'utf8')
     const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
 
-    expect(view.match(/class="chatluna-studio-model-analysis-tool-call-header"/g)).toHaveLength(3)
-    expect(styles).toContain('.chatluna-studio-model-analysis-tool-call-header,')
-    expect(styles).toContain('.chatluna-studio-model-analysis-tool-call-header span')
+    expect(toolCard).toContain('class="chatluna-studio-model-analysis-card is-tool-call"')
+    expect(toolCard.match(/class="chatluna-studio-model-analysis-tool-card-name"/g)).toHaveLength(1)
+    expect(toolCard).toContain('v-show="!isCollapsed"')
+    expect(styles).toContain('.chatluna-studio-model-analysis-tool-card-name')
+    expect(styles).toContain('.chatluna-studio-model-analysis-tool-card-name,')
+    expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call-header,')
     expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call > div')
     expect(styles).not.toContain('.chatluna-studio-model-analysis-tool-call span')
   })
@@ -678,11 +691,11 @@ describe('模型请求分析展示模型', () => {
 
   it('折叠长文本用渐隐遮罩并居中展开按钮，避免半透明实色透出字形', () => {
     const styles = readFileSync(resolve('client/model-request/styles.css'), 'utf8')
-    const view = readFileSync(resolve('client/model-request/analysis-view.vue'), 'utf8')
+    const block = readFileSync(resolve('client/model-request/analysis-content-block.ts'), 'utf8')
 
-    expect(view).toContain("class: 'chatluna-studio-model-analysis-expand'")
-    expect(view).toContain('展开全部（${blockProps.value.length} 字符）')
-    expect(view).toContain("h(IconChevronDown, { size: 12, 'aria-hidden': 'true' })")
+    expect(block).toContain("class: 'chatluna-studio-model-analysis-expand'")
+    expect(block).toContain('展开全部（${blockProps.value.length} 字符）')
+    expect(block).toContain("h(IconChevronDown, { size: 12, 'aria-hidden': 'true' })")
     expect(styles).toMatch(/\.chatluna-studio-model-analysis-expand \{[^}]*display: flex;[^}]*justify-content: center;/s)
     expect(styles).toContain('.chatluna-studio-model-analysis-section:not(.is-collapsed) .chatluna-studio-model-analysis-expand svg { transform: rotate(180deg); }')
     expect(styles).toContain('-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);')

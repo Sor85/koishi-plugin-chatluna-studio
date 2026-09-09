@@ -265,24 +265,24 @@ function prepareModelAnalysisTarget(
   const message = conversation.messages.find(candidate => (
     modelAnalysisTargetId(candidate.evidenceId) === target
     || modelRequestOccurrenceTargetId(candidate.evidenceId) === target
-    || candidate.toolCalls.some(call => modelAnalysisTargetId(call.evidenceId) === target)
   ))
   const messageTarget = message ? modelAnalysisTargetId(message.evidenceId) : undefined
   const occurrence = Boolean(message && modelRequestOccurrenceTargetId(message.evidenceId) === target)
   const tool = conversation.tools.find(candidate => modelAnalysisTargetId(candidate.evidenceId) === target)
+  // 响应正文、思考、结束原因与用量落在响应卡片；响应侧的工具调用与工具结果各自成卡，
+  // 因此不再把它们的目标归并到响应卡片上。
   const response = target === MODEL_ANALYSIS_RESPONSE_TARGET
-    || Boolean(conversation.response && [
-      ...conversation.response.toolCalls.map(call => call.evidenceId),
-      ...conversation.response.toolResults.map(result => result.evidenceId),
-    ].some(evidenceId => modelAnalysisTargetId(evidenceId) === target))
   return {
     ...(message ? { messageEvidenceId: message.evidenceId } : {}),
     response,
     toolEvidenceIds: tool ? [tool.evidenceId] : [],
-    expandCards: [
+    // 每条证据的卡片就是它自己的定位目标：消息、响应、工具调用与工具结果都各自折叠。
+    // occurrence mark 不是卡片，展开的是它所在的消息卡片。
+    // 工具定义目标指向 TOOL DEFS 区块而不是折叠卡片，expandCard 对它是空操作。
+    expandCards: [...new Set([
       ...(messageTarget ? [messageTarget] : []),
-      ...(response ? [MODEL_ANALYSIS_RESPONSE_TARGET] : []),
-    ],
+      ...(occurrence ? [] : [target]),
+    ])],
     // occurrence mark 自己负责测量；所属消息 target 负责驱动 AnalysisContentBlock 强制展开。
     expandTargets: occurrence && messageTarget ? [messageTarget, target] : [target],
   }

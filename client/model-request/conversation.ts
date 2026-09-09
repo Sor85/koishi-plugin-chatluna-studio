@@ -24,6 +24,8 @@ export interface ModelConversationToolCall {
   id?: string
   name: string
   arguments?: string
+  /** 卡片头部字符数。工具调用独立成卡后与正文折叠按钮共用同一口径，都数参数字符串本身。 */
+  characters: number
 }
 
 export interface ModelConversationMessage {
@@ -61,6 +63,7 @@ export interface ModelConversationToolResult {
   id?: string
   name?: string
   content: string
+  characters: number
   raw: unknown
   path: readonly string[]
 }
@@ -154,6 +157,7 @@ function createMessage(message: ModelEvidenceMessage, index: number): ModelConve
     ...(call.callId ? { id: call.callId } : {}),
     name: call.name,
     ...(call.arguments !== undefined ? { arguments: call.arguments } : {}),
+    characters: call.arguments?.length ?? 0,
   }))
   // 投影的消息角色描述协议识别结果；卡片按基础证据种类归类，因此 tool 角色落在工具结果这一档。
   const kind: ModelConversationMessageKind = message.role === 'tool' ? 'tool-result' : message.role
@@ -253,6 +257,7 @@ function buildResponse(
         ...(event.callId ? { id: event.callId } : {}),
         name: event.name ?? '工具调用',
         ...(event.arguments !== undefined ? { arguments: event.arguments } : {}),
+        characters: event.arguments?.length ?? 0,
       })
       continue
     }
@@ -261,6 +266,7 @@ function buildResponse(
       ...(event.callId ? { id: event.callId } : {}),
       ...(event.name ? { name: event.name } : {}),
       content: event.text ?? '',
+      characters: event.text?.length ?? 0,
       raw: sourceValue(event.sources),
       path: sourcePath(event.sources),
     })

@@ -168,13 +168,14 @@ describe('证据定位', () => {
     expect(harness.scrolls).toEqual([{ top: 388, behavior: 'smooth' }])
   })
 
-  it('定位到工具调用时展开它所在的消息卡片', async () => {
+  it('定位到工具调用时展开它自己的工具调用卡片', async () => {
     const harness = createHarness()
     harness.setElementTop(TOOL_CALL_TARGET, 900)
 
     await harness.locator.locate(TOOL_CALL_TARGET)
 
-    expect(harness.expandedCards).toEqual([ASSISTANT_TARGET])
+    // 工具调用独立成卡后不再顺带展开它所在的消息卡片。
+    expect(harness.expandedCards).toEqual([TOOL_CALL_TARGET])
     expect(harness.scrolls).toEqual([{ top: 788, behavior: 'smooth' }])
   })
 
